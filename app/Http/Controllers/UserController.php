@@ -18,17 +18,20 @@ class UserController extends Controller
         $users = User::paginate(10);
         return view('pages.user', compact('users'));
     }
+
     public function store(Request $request)
     {
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
-                'nim' => 'required|string|unique:users',
+                'nisn' => 'required|string|unique:users',
                 'alamat' => 'required|string',
                 'no_telepon' => 'required|string',
                 'tahun_masuk' => 'required|string',
-                'role' => 'required|in:admin,mahasiswa',
+                'kelas' => 'required|integer',
+                'status_siswa' => 'required|in:aktif,do,lulus',
+                'role' => 'required|in:admin,siswa',
                 'password' => ['required', Password::defaults()],
             ]);
 
@@ -55,11 +58,12 @@ class UserController extends Controller
                 'alamat' => 'sometimes|required|string',
                 'no_telepon' => 'sometimes|required|string',
                 'tahun_masuk' => 'sometimes|required|string',
-                'role' => 'required|in:admin,mahasiswa',
+                'kelas' => 'sometimes|required|integer',
+                'status_siswa' => 'sometimes|required|in:aktif,do,lulus',
+                'role' => 'required|in:admin,siswa',
                 'password' => ['nullable', 'confirmed', Password::defaults()],
             ]);
 
-            // Email validation with unique check excluding current user
             if ($request->has('email')) {
                 $request->validate([
                     'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
@@ -67,12 +71,11 @@ class UserController extends Controller
                 $validated['email'] = $request->email;
             }
 
-            // NIM validation with unique check excluding current user
-            if ($request->has('nim')) {
+            if ($request->has('nisn')) {
                 $request->validate([
-                    'nim' => 'required|string|unique:users,nim,' . $user->id,
+                    'nisn' => 'required|string|unique:users,nisn,' . $user->id,
                 ]);
-                $validated['nim'] = $request->nim;
+                $validated['nisn'] = $request->nisn;
             }
 
             if (!empty($validated['password'])) {
@@ -93,11 +96,12 @@ class UserController extends Controller
                 ->withInput();
         }
     }
+
     public function destroy(User $user)
     {
         try {
             $user->delete();
-            return redirect()->route('users.index')->with('succes', 'User Berhasil dihapus');
+            return redirect()->route('users.index')->with('success', 'User Berhasil dihapus');
         } catch (ValidationException $e) {
             return redirect()->route('users.index')->with('error', $e->getMessage());
         } catch (QueryException $e) {
@@ -108,6 +112,4 @@ class UserController extends Controller
             return redirect()->route('users.index')->with('error', 'Error: ' . $e->getMessage());
         }
     }
-
-
 }

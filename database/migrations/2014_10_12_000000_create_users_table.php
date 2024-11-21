@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->year('tahun_masuk');
             $table->integer('kelas')->default(1);
             $table->decimal('total_tunggakan', 12, 2)->default(0);
-            $table->enum('status_siswa', ['aktif', 'do','lulus'])->default('aktif');
-            $table->enum('role', ['admin', 'mahasiswa'])->default('mahasiswa');
+            $table->enum('status_siswa', ['aktif', 'do', 'lulus'])->default('aktif');
+            $table->enum('role', ['admin', 'siswa'])->default('siswa');
             $table->timestamp('email_verified_at')->nullable();
             $table->longText('foto')->nullable();
             $table->string('password');

@@ -3,11 +3,11 @@
     <div class="p-4 border-b">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4" :class="{ 'justify-center': !sidebarOpen }">
-                <img src="{{ asset('assets/foto/logo.png') }}" alt="Logo" class="h-12 w-auto object-contain">
+                <img src="{{ asset('assets/foto/logo.jpeg') }}" alt="Logo" class="h-12 w-auto object-contain">
                 <!-- Perbaikan di sini -->
                 <div x-show="sidebarOpen">
-                    <div class="font-bold text-gray-900">STIKPAR</div>
-                    <div class="text-xs text-gray-600">Sistem Informasi Pembayaran</div>
+                    <div class="font-bold text-gray-900">Sistem Informasi Pembayaran</div>
+                    <div class="text-xs text-gray-600">SMK TARUNA INDONESIA</div>
                 </div>
             </div>
             <!-- Toggle Button -->

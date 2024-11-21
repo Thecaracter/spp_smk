@@ -45,7 +45,7 @@ class UserSeeder extends Seeder
                 'tahun_masuk' => 2024,
                 'kelas' => 1,
                 'status_siswa' => 'aktif',
-                'role' => 'mahasiswa',
+                'role' => 'siswa',
                 'password' => Hash::make('password'),
             ]);
         }

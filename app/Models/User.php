@@ -40,19 +40,17 @@ class User extends Authenticatable
         'total_tunggakan' => 'decimal:2'
     ];
 
-    // Relasi ke tagihan
     public function tagihan()
     {
         return $this->hasMany(Tagihan::class);
     }
 
-    // Relasi ke pembayaran 
+
     public function pembayaran()
     {
         return $this->hasManyThrough(Pembayaran::class, Tagihan::class);
     }
 
-    // Pembayaran yang diverifikasi admin
     public function verifikasi_pembayaran()
     {
         return $this->hasMany(Pembayaran::class, 'verifikasi_oleh');

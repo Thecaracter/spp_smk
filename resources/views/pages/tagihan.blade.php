@@ -1,50 +1,40 @@
-{{-- resources/views/pages/tagihan/index.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Manajemen Tagihan')
 
 @section('content')
     <div class="container mx-auto px-4" x-data="tagihanManager()">
-        <!-- Main List -->
         <div class="mb-6" x-show="!showUserDetail">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-semibold">Daftar Mahasiswa dan Tunggakan</h1>
-                <div class="flex space-x-2">
-                    <div class="relative">
-                        <input type="text" id="searchInput" x-model="searchQuery" @input="handleSearch()"
-                            class="w-64 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-primary"
-                            placeholder="Cari mahasiswa...">
-                        <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
-                    </div>
+                <h1 class="text-2xl font-semibold">Daftar Siswa dan Tunggakan</h1>
+                <div class="relative">
+                    <input type="text" id="searchInput" x-model="searchQuery" @input="handleSearch()"
+                        class="w-64 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-primary"
+                        placeholder="Cari siswa...">
+                    <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
                 </div>
             </div>
 
-            <!-- Users Table -->
             <div class="bg-white rounded-lg shadow-sm">
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    NIM</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Nama</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Semester</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Total Tunggakan</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Tagihan Aktif</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Aksi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kelas</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Tunggakan
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tagihan Aktif
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200" id="searchResults">
                             @foreach ($users as $user)
                                 <tr class="search-row hover:bg-gray-50" data-user-id="{{ $user->id }}">
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->nim }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->nisn }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-10 w-10">
@@ -64,10 +54,11 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->semester_aktif }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->kelas }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900 total-tunggakan">Rp
-                                            {{ number_format($user->total_tunggakan, 0, ',', '.') }}</div>
+                                        <div class="text-sm text-gray-900 total-tunggakan">
+                                            Rp {{ number_format($user->total_tunggakan, 0, ',', '.') }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900 tagihan-aktif">{{ $user->tagihan_belum_lunas }}
@@ -75,8 +66,8 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                            :class="getStatusClass('{{ $user->status_mahasiswa }}')">
-                                            {{ ucfirst($user->status_mahasiswa) }}
+                                            :class="getStatusClass('{{ $user->status_siswa }}')">
+                                            {{ ucfirst($user->status_siswa) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -94,15 +85,13 @@
             </div>
         </div>
 
-        <!-- Detail View -->
         <div x-show="showUserDetail" class="space-y-6">
-            <!-- Header -->
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-4">
                     <button @click="showUserDetail = false" class="text-gray-500 hover:text-gray-700">
                         <span class="material-icons">arrow_back</span>
                     </button>
-                    <h1 class="text-2xl font-semibold">Detail Tagihan Mahasiswa</h1>
+                    <h1 class="text-2xl font-semibold">Detail Tagihan Siswa</h1>
                 </div>
                 <button @click="handleShowCreateModal()"
                     class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark">
@@ -110,7 +99,6 @@
                 </button>
             </div>
 
-            <!-- Student Info Card -->
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="grid md:grid-cols-2 gap-6">
                     <div class="flex items-center space-x-4">
@@ -120,7 +108,7 @@
                                     x-text="selectedUser.name.charAt(0).toUpperCase()"></div>
                                 <div>
                                     <h2 class="text-xl font-semibold" x-text="selectedUser.name"></h2>
-                                    <p class="text-gray-600" x-text="'NIM: ' + selectedUser.nim"></p>
+                                    <p class="text-gray-600" x-text="'NIS: ' + selectedUser.nisn"></p>
                                 </div>
                             </div>
                         </template>
@@ -129,22 +117,21 @@
                         <template x-if="selectedUser">
                             <div class="space-y-4">
                                 <div>
-                                    <p class="text-sm text-gray-600">Semester Aktif</p>
-                                    <p class="font-semibold summary-semester" x-text="selectedUser.semester_aktif"></p>
+                                    <p class="text-sm text-gray-600">Kelas</p>
+                                    <p class="font-semibold summary-kelas" x-text="selectedUser.kelas"></p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Status</p>
                                     <span
                                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full summary-status"
-                                        :class="getStatusClass(selectedUser.status_mahasiswa)"
-                                        x-text="capitalizeFirst(selectedUser.status_mahasiswa)">
+                                        :class="getStatusClass(selectedUser.status_siswa)"
+                                        x-text="capitalizeFirst(selectedUser.status_siswa)">
                                     </span>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Tunggakan</p>
                                     <p class="font-semibold text-red-600 summary-tunggakan"
-                                        x-text="formatCurrency(selectedUser.total_tunggakan)">
-                                    </p>
+                                        x-text="formatCurrency(selectedUser.total_tunggakan)"></p>
                                 </div>
                             </div>
                         </template>
@@ -152,7 +139,6 @@
                 </div>
             </div>
 
-            <!-- Tabs and Tagihan List -->
             <div class="bg-white rounded-lg shadow-sm" x-data="{ activeTab: 'belum_bayar' }">
                 <div class="border-b">
                     <nav class="flex space-x-4 px-6" aria-label="Tabs">
@@ -226,7 +212,6 @@
             </div>
         </div>
 
-        <!-- Create Modal -->
         <div x-show="showCreateModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
             @keydown.escape.window="showCreateModal = false">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -267,9 +252,11 @@
                                             <svg class="animate-spin h-5 w-5 text-primary"
                                                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                    stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    stroke="currentColor" stroke-width="4">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                        stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                             </svg>
                                         </div>
                                     </div>
@@ -298,7 +285,6 @@
             </div>
         </div>
 
-        <!-- Edit Modal -->
         <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
             @keydown.escape.window="showEditModal = false">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -356,46 +342,6 @@
 
     @push('scripts')
         <script>
-            // Toast implementation
-            const Toast = {
-                container: null,
-
-                init() {
-                    if (!this.container) {
-                        this.container = document.createElement('div');
-                        this.container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2';
-                        document.body.appendChild(this.container);
-                    }
-                },
-
-                show(message, type = 'success') {
-                    this.init();
-
-                    const toast = document.createElement('div');
-                    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-
-                    toast.className =
-                        `${bgColor} text-white px-6 py-3 rounded shadow-lg transition-all transform translate-x-0 duration-300 min-w-[300px]`;
-                    toast.innerHTML = message;
-
-                    this.container.appendChild(toast);
-
-                    setTimeout(() => {
-                        toast.classList.add('translate-x-full', 'opacity-0');
-                        setTimeout(() => toast.remove(), 300);
-                    }, 3000);
-                },
-
-                success(message) {
-                    this.show(message, 'success');
-                },
-
-                error(message) {
-                    this.show(message, 'error');
-                }
-            };
-
-            // Main Tagihan Manager
             function tagihanManager() {
                 return {
                     showUserDetail: false,
@@ -454,18 +400,16 @@
                             const data = await response.json();
 
                             if (data.tagihan) {
-                                // Update selectedUser dengan data terbaru
                                 this.selectedUser = {
                                     ...this.selectedUser,
                                     tagihan: this.groupTagihan(data.tagihan),
                                     tunggakan_by_jenis: data.tunggakan_by_jenis || [],
                                     tunggakan_summary: data.tunggakan_summary || {},
                                     total_tunggakan: data.tunggakan_summary?.total_tunggakan || 0,
-                                    semester_aktif: data.user?.semester_aktif || this.selectedUser.semester_aktif,
-                                    status_mahasiswa: data.user?.status_mahasiswa || this.selectedUser.status_mahasiswa
+                                    kelas: data.user?.kelas || this.selectedUser.kelas,
+                                    status_siswa: data.user?.status_siswa || this.selectedUser.status_siswa
                                 };
 
-                                // Update tampilan summary
                                 this.updateUserSummary();
                             } else {
                                 throw new Error('Data tagihan tidak ditemukan');
@@ -477,28 +421,24 @@
                     },
 
                     updateUserSummary() {
-                        // Update total tunggakan di summary
                         const summaryTunggakan = document.querySelector('.summary-tunggakan');
                         if (summaryTunggakan) {
                             summaryTunggakan.textContent = this.formatCurrency(this.selectedUser.total_tunggakan);
                         }
 
-                        // Update semester aktif
-                        const summarySemester = document.querySelector('.summary-semester');
-                        if (summarySemester) {
-                            summarySemester.textContent = this.selectedUser.semester_aktif;
+                        const summaryKelas = document.querySelector('.summary-kelas');
+                        if (summaryKelas) {
+                            summaryKelas.textContent = this.selectedUser.kelas;
                         }
 
-                        // Update status mahasiswa
                         const summaryStatus = document.querySelector('.summary-status');
                         if (summaryStatus) {
-                            const statusClass = this.getStatusClass(this.selectedUser.status_mahasiswa);
+                            const statusClass = this.getStatusClass(this.selectedUser.status_siswa);
                             summaryStatus.className =
                                 `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`;
-                            summaryStatus.textContent = this.capitalizeFirst(this.selectedUser.status_mahasiswa);
+                            summaryStatus.textContent = this.capitalizeFirst(this.selectedUser.status_siswa);
                         }
 
-                        // Update row di tabel juga
                         const userRow = document.querySelector(`tr[data-user-id="${this.selectedUser.id}"]`);
                         if (userRow) {
                             const totalTunggakanEl = userRow.querySelector('.total-tunggakan');
@@ -542,20 +482,15 @@
 
                         this.createForm.loading = true;
                         try {
-                            const response = await fetch(`/tagihan/jenis-pembayaran/${id}`, {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
+                            const jenisPembayaran = @json($jenisPembayaran);
+                            const selectedJenis = jenisPembayaran.find(j => j.id == id);
 
-                            if (!response.ok) {
-                                throw new Error('Gagal memuat data jenis pembayaran');
+                            if (selectedJenis) {
+                                this.createForm.nominal = selectedJenis.nominal;
+                                this.createForm.formatted_nominal = this.formatCurrency(selectedJenis.nominal);
+                            } else {
+                                throw new Error('Jenis pembayaran tidak ditemukan');
                             }
-
-                            const data = await response.json();
-                            this.createForm.nominal = data.nominal;
-                            this.createForm.formatted_nominal = this.formatCurrency(data.nominal);
                         } catch (error) {
                             console.error('Error:', error);
                             Toast.error(error.message || 'Gagal memuat detail jenis pembayaran');
@@ -608,7 +543,7 @@
                     handleEditTagihan(tagihan) {
                         this.selectedTagihan = {
                             ...tagihan
-                        }; // Create a copy
+                        };
                         this.showEditModal = true;
                     },
 
@@ -696,8 +631,8 @@
                     getStatusClass(status) {
                         const statusClasses = {
                             'aktif': 'bg-green-100 text-green-800',
-                            'cuti': 'bg-yellow-100 text-yellow-800',
-                            'do': 'bg-red-100 text-red-800'
+                            'nonaktif': 'bg-red-100 text-red-800',
+                            'lulus': 'bg-blue-100 text-blue-800'
                         };
                         return statusClasses[status] || 'bg-gray-100 text-gray-800';
                     },
@@ -718,6 +653,44 @@
                     }
                 };
             }
+
+            const Toast = {
+                container: null,
+
+                init() {
+                    if (!this.container) {
+                        this.container = document.createElement('div');
+                        this.container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2';
+                        document.body.appendChild(this.container);
+                    }
+                },
+
+                show(message, type = 'success') {
+                    this.init();
+
+                    const toast = document.createElement('div');
+                    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+
+                    toast.className =
+                        `${bgColor} text-white px-6 py-3 rounded shadow-lg transition-all transform translate-x-0 duration-300 min-w-[300px]`;
+                    toast.innerHTML = message;
+
+                    this.container.appendChild(toast);
+
+                    setTimeout(() => {
+                        toast.classList.add('translate-x-full', 'opacity-0');
+                        setTimeout(() => toast.remove(), 300);
+                    }, 3000);
+                },
+
+                success(message) {
+                    this.show(message, 'success');
+                },
+
+                error(message) {
+                    this.show(message, 'error');
+                }
+            };
         </script>
     @endpush
 @endsection

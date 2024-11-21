@@ -14,7 +14,6 @@
             </div>
         @endif
 
-        <!-- Header dan Tombol Tambah -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Data User</h1>
             <button onclick="document.getElementById('createModal').classList.remove('hidden')"
@@ -26,6 +25,8 @@
                 Tambah User
             </button>
         </div>
+
+        <!-- Search -->
         <div class="mb-4">
             <div class="flex gap-4 items-end">
                 <div class="flex-1">
@@ -33,7 +34,7 @@
                     <div class="relative">
                         <input type="text" id="searchInput"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
-                            placeholder="Cari berdasarkan nama, email, atau NIM...">
+                            placeholder="Cari berdasarkan nama, email, atau NISN...">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
                                 fill="currentColor">
@@ -47,10 +48,9 @@
             </div>
         </div>
 
-        <!-- Tabel User dengan scroll horizontal -->
+        <!-- Table -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="overflow-x-auto">
-
                 <div class="inline-block min-w-full align-middle">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -66,7 +66,13 @@
                                     Email</th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                                    NIM</th>
+                                    NISN</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                    Kelas</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                    Status</th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Alamat</th>
@@ -90,7 +96,10 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->email }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->nim }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->nisn }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->kelas }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->status_siswa }}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->alamat }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->no_telepon }}
                                     </td>
@@ -137,13 +146,12 @@
             </div>
         </div>
 
-        <!-- Modal Tambah User -->
+        <!-- Create Modal -->
         <div id="createModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity hidden z-50">
             <div class="fixed inset-0 overflow-y-auto">
                 <div class="flex min-h-full items-end sm:items-center justify-center p-4 text-center sm:p-0">
                     <div
                         class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-                        <!-- Modal Header -->
                         <div class="bg-white px-4 py-4 border-b border-gray-200">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
@@ -160,8 +168,7 @@
                                         <p class="text-sm text-gray-500">Silahkan isi form dibawah dengan lengkap</p>
                                     </div>
                                 </div>
-                                <button type="button"
-                                    onclick="document.getElementById('createModal').classList.add('hidden')"
+                                <button type="button" onclick="closeModal('createModal')"
                                     class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none">
                                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -171,7 +178,6 @@
                             </div>
                         </div>
 
-                        <!-- Modal Body -->
                         <div class="bg-white px-4 py-5">
                             <form action="{{ route('users.store') }}" method="POST" class="space-y-4">
                                 @csrf
@@ -180,28 +186,40 @@
                                         <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
                                         <input type="text" name="name" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                        <p class="mt-1 text-xs text-gray-500">Masukkan nama lengkap sesuai KTP/KTM</p>
                                     </div>
 
                                     <div class="space-y-2">
                                         <label class="block text-sm font-medium text-gray-700">Email</label>
                                         <input type="email" name="email" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                        <p class="mt-1 text-xs text-gray-500">Email akan digunakan untuk login</p>
                                     </div>
 
                                     <div class="space-y-2">
-                                        <label class="block text-sm font-medium text-gray-700">NIM</label>
-                                        <input type="text" name="nim" required
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                            placeholder="Contoh: 20220001">
+                                        <label class="block text-sm font-medium text-gray-700">NISN</label>
+                                        <input type="text" name="nisn" required
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">Kelas</label>
+                                        <input type="number" name="kelas" required min="1"
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">Status Siswa</label>
+                                        <select name="status_siswa" required
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                            <option value="aktif">Aktif</option>
+                                            <option value="do">DO</option>
+                                            <option value="lulus">Lulus</option>
+                                        </select>
                                     </div>
 
                                     <div class="space-y-2">
                                         <label class="block text-sm font-medium text-gray-700">No. Telepon</label>
                                         <input type="text" name="no_telepon" required
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                            placeholder="Contoh: 08123456789">
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                     </div>
 
                                     <div class="space-y-2 sm:col-span-2">
@@ -224,7 +242,7 @@
                                         <label class="block text-sm font-medium text-gray-700">Role</label>
                                         <select name="role" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                            <option value="mahasiswa">Mahasiswa</option>
+                                            <option value="siswa">Siswa</option>
                                             <option value="admin">Admin</option>
                                         </select>
                                     </div>
@@ -233,7 +251,6 @@
                                         <label class="block text-sm font-medium text-gray-700">Password</label>
                                         <input type="password" name="password" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                        <p class="mt-1 text-xs text-gray-500">Minimal 8 karakter</p>
                                     </div>
 
                                     <div class="space-y-2">
@@ -243,10 +260,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Modal Footer -->
                                 <div class="mt-6 flex flex-col sm:flex-row justify-end gap-3">
-                                    <button type="button"
-                                        onclick="document.getElementById('createModal').classList.add('hidden')"
+                                    <button type="button" onclick="closeModal('createModal')"
                                         class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto sm:text-sm">
                                         Batal
                                     </button>
@@ -262,14 +277,12 @@
             </div>
         </div>
 
-        <!-- Modal Edit User -->
-        <!-- Modal Edit User -->
+        <!-- Edit Modal -->
         <div id="editModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity hidden z-50">
             <div class="fixed inset-0 overflow-y-auto">
                 <div class="flex min-h-full items-end sm:items-center justify-center p-4 text-center sm:p-0">
                     <div
                         class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-                        <!-- Modal Header -->
                         <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                             <div class="sm:flex sm:items-start">
                                 <div
@@ -289,7 +302,6 @@
                             </div>
                         </div>
 
-                        <!-- Form Content -->
                         <form id="editForm" method="POST">
                             @csrf
                             @method('PATCH')
@@ -308,9 +320,25 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">NIM</label>
-                                        <input type="text" name="nim" id="editNim" required
+                                        <label class="block text-sm font-medium text-gray-700">NISN</label>
+                                        <input type="text" name="nisn" id="editNisn" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Kelas</label>
+                                        <input type="number" name="kelas" id="editKelas" required min="1"
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Status Siswa</label>
+                                        <select name="status_siswa" id="editStatusSiswa" required
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                            <option value="aktif">Aktif</option>
+                                            <option value="do">DO</option>
+                                            <option value="lulus">Lulus</option>
+                                        </select>
                                     </div>
 
                                     <div>
@@ -339,7 +367,7 @@
                                         <label class="block text-sm font-medium text-gray-700">Role</label>
                                         <select name="role" id="editRole" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                            <option value="mahasiswa">Mahasiswa</option>
+                                            <option value="siswa">Siswa</option>
                                             <option value="admin">Admin</option>
                                         </select>
                                     </div>
@@ -360,7 +388,6 @@
                                 </div>
                             </div>
 
-                            <!-- Modal Footer -->
                             <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                                 <button type="submit"
                                     class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm">
@@ -377,7 +404,7 @@
             </div>
         </div>
 
-        <!-- Modal Delete -->
+        <!-- Delete Modal -->
         <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 overflow-y-auto">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
                 <div class="relative bg-white rounded-lg max-w-lg w-full mx-auto shadow-xl p-6">
@@ -387,8 +414,7 @@
                         @csrf
                         @method('DELETE')
                         <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                            <button type="button"
-                                onclick="document.getElementById('deleteModal').classList.add('hidden')"
+                            <button type="button" onclick="closeModal('deleteModal')"
                                 class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                                 Batal
                             </button>
@@ -401,8 +427,6 @@
                 </div>
             </div>
         </div>
-
-
     </div>
 @endsection
 @push('scripts')
@@ -412,46 +436,50 @@
             const form = document.getElementById('editForm');
             const user = JSON.parse(userData);
 
-            // Set form action
             form.action = `/users/${userId}`;
 
-            // Fill form fields
             document.getElementById('editName').value = user.name;
             document.getElementById('editEmail').value = user.email;
-            document.getElementById('editNim').value = user.nim;
+            document.getElementById('editNisn').value = user.nisn;
+            document.getElementById('editKelas').value = user.kelas;
+            document.getElementById('editStatusSiswa').value = user.status_siswa;
             document.getElementById('editNoTelepon').value = user.no_telepon;
             document.getElementById('editAlamat').value = user.alamat;
             document.getElementById('editTahunMasuk').value = user.tahun_masuk;
             document.getElementById('editRole').value = user.role;
 
-            // Show modal with smooth animation
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function openDeleteModal(userId) {
+            const modal = document.getElementById('deleteModal');
+            const form = document.getElementById('deleteForm');
+
+            form.action = `/users/${userId}`;
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
         }
 
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
-
             modal.classList.add('hidden');
             document.body.style.overflow = 'auto';
         }
 
-        // Close modals when clicking outside
         window.onclick = function(event) {
             const modals = [
                 document.getElementById('createModal'),
                 document.getElementById('editModal'),
                 document.getElementById('deleteModal')
             ];
-
             modals.forEach(modal => {
-                if (event.target === modal) {
+                if (event.target == modal) {
                     closeModal(modal.id);
                 }
             });
-        }
+        };
 
-        // Close modals with Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 const modals = [
@@ -467,6 +495,7 @@
                 });
             }
         });
+
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
@@ -478,10 +507,10 @@
                     trs.forEach(function(tr) {
                         const nama = tr.querySelector('td:nth-child(2)');
                         const email = tr.querySelector('td:nth-child(3)');
-                        const nim = tr.querySelector('td:nth-child(4)');
+                        const nisn = tr.querySelector('td:nth-child(4)');
 
-                        if (nama && email && nim) {
-                            const text = nama.textContent + email.textContent + nim.textContent;
+                        if (nama && email && nisn) {
+                            const text = nama.textContent + email.textContent + nisn.textContent;
                             if (text.toLowerCase().includes(filter)) {
                                 tr.style.display = '';
                             } else {
@@ -493,5 +522,4 @@
             }
         });
     </script>
-    <script></script>
 @endpush

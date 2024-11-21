@@ -74,17 +74,7 @@ Route::middleware(['auth'])->group(function () {
         // Payments Management
         Route::prefix('pembayaran')->name('pembayaran.')->group(function () {
             Route::get('/', [PembayaranController::class, 'index'])->name('index');
-            Route::get('/search', [PembayaranController::class, 'search'])->name('search');
-            Route::get('/{pembayaran}', [PembayaranController::class, 'show'])->name('show');
-            Route::get('/bukti/{pembayaran}', [PembayaranController::class, 'showBukti'])->name('bukti');
-            Route::post('/{pembayaran}/verifikasi', [PembayaranController::class, 'verifikasi'])->name('verifikasi');
-        });
-
-        // Payment History
-        Route::prefix('riwayat')->name('riwayat.')->group(function () {
-            Route::get('/', [RiwayatController::class, 'index'])->name('index');
-            Route::get('/{pembayaran}', [RiwayatController::class, 'show'])->name('show');
-            Route::get('/bukti/{pembayaran}', [RiwayatController::class, 'showBukti'])->name('bukti');
+            Route::get('/export', [PembayaranController::class, 'export'])->name('export');
         });
     });
 

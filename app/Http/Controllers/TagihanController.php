@@ -15,7 +15,7 @@ class TagihanController extends Controller
     public function index(Request $request)
     {
         try {
-            $users = User::where('role', 'mahasiswa')
+            $users = User::where('role', 'siswa')
                 ->withCount([
                     'tagihan as tagihan_belum_lunas' => function ($query) {
                         $query->where('status', '!=', 'lunas');
@@ -67,8 +67,7 @@ class TagihanController extends Controller
                 ->with([
                     'jenis_pembayaran',
                     'pembayaran' => function ($query) {
-                        $query->with('verifikator')
-                            ->orderBy('created_at', 'desc');
+                        $query->orderBy('created_at', 'desc');
                     }
                 ])
                 ->get();
@@ -89,7 +88,7 @@ class TagihanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'user' => $user,  // Tambahkan ini
+                'user' => $user,
                 'tagihan' => $tagihan,
                 'tunggakan_by_jenis' => $tunggakanByJenis,
                 'tunggakan_summary' => $tunggakanSummary
@@ -99,19 +98,6 @@ class TagihanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memuat detail tagihan'
-            ], 500);
-        }
-    }
-
-    public function getJenisPembayaran(JenisPembayaran $jenisPembayaran)
-    {
-        try {
-            return response()->json($jenisPembayaran);
-        } catch (Exception $e) {
-            Log::error('Error in TagihanController@getJenisPembayaran: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Terjadi kesalahan saat memuat jenis pembayaran',
-                'success' => false
             ], 500);
         }
     }
@@ -156,41 +142,11 @@ class TagihanController extends Controller
         }
     }
 
-    public function update(Request $request, User $user, Tagihan $tagihan)
-    {
-        try {
-            $validated = $request->validate([
-                'tanggal_jatuh_tempo' => 'required|date',
-            ]);
-
-            DB::beginTransaction();
-            try {
-                $tagihan->update($validated);
-                DB::commit();
-
-                return response()->json([
-                    'message' => 'Tagihan berhasil diperbarui',
-                    'success' => true
-                ]);
-            } catch (Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
-        } catch (Exception $e) {
-            Log::error('Error in TagihanController@update: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Gagal memperbarui tagihan: ' . $e->getMessage(),
-                'success' => false
-            ], 500);
-        }
-    }
-
     public function destroy(User $user, Tagihan $tagihan)
     {
         try {
             DB::beginTransaction();
             try {
-                // Check if tagihan has any payments
                 if ($tagihan->pembayaran()->exists()) {
                     throw new Exception('Tidak dapat menghapus tagihan yang sudah memiliki pembayaran');
                 }
@@ -210,46 +166,6 @@ class TagihanController extends Controller
             Log::error('Error in TagihanController@destroy: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Gagal menghapus tagihan: ' . $e->getMessage(),
-                'success' => false
-            ], 500);
-        }
-    }
-
-    public function getStatistics(User $user)
-    {
-        try {
-            $statistics = [
-                'total_tunggakan' => $user->total_tunggakan,
-                'tagihan_aktif' => $user->tagihan()
-                    ->where('status', '!=', 'lunas')
-                    ->count(),
-                'pembayaran_pending' => $user->tagihan()
-                    ->whereHas('pembayaran', function ($query) {
-                        $query->where('status', 'menunggu');
-                    })
-                    ->count(),
-                'jatuh_tempo_terdekat' => $user->tagihan()
-                    ->where('status', '!=', 'lunas')
-                    ->where('tanggal_jatuh_tempo', '>=', now())
-                    ->orderBy('tanggal_jatuh_tempo')
-                    ->with('jenis_pembayaran')
-                    ->first(),
-                'tunggakan_by_jenis' => $user->tagihan()
-                    ->where('status', '!=', 'lunas')
-                    ->select('jenis_pembayaran_id', DB::raw('SUM(total_tagihan - total_terbayar) as total_tunggakan'))
-                    ->groupBy('jenis_pembayaran_id')
-                    ->with('jenis_pembayaran')
-                    ->get()
-            ];
-
-            return response()->json([
-                'data' => $statistics,
-                'success' => true
-            ]);
-        } catch (Exception $e) {
-            Log::error('Error in TagihanController@getStatistics: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Gagal memuat statistik tagihan',
                 'success' => false
             ], 500);
         }
