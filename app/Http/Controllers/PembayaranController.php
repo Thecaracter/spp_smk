@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PembayaranController extends Controller
 {
+    // PembayaranController.php
     public function index(Request $request)
     {
         $month = $request->get('month', now()->month);
@@ -32,16 +33,24 @@ class PembayaranController extends Controller
             ])
             ->get()
             ->map(function ($user) {
-                $tagihanBulanIni = $user->tagihan->first();
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'nim' => $user->nisn,
                     'kelas' => $user->kelas,
-                    'status' => $tagihanBulanIni ?
-                        ($tagihanBulanIni->status === 'lunas' ? 'Sudah Bayar' : 'Belum Bayar')
-                        : 'Belum Ada Tagihan',
-                    'tagihan' => $tagihanBulanIni,
+                    'status' => $user->tagihan->isEmpty()
+                        ? 'Tidak Ada Tagihan'
+                        : ($user->tagihan->where('status', '!=', 'lunas')->isEmpty() ? 'Lunas' : 'Belum Lunas'),
+                    'tagihan' => $user->tagihan->map(function ($tag) {
+                        return [
+                            'id' => $tag->id,
+                            'jenis' => $tag->jenis_pembayaran->nama,
+                            'total_tagihan' => $tag->total_tagihan,
+                            'total_terbayar' => $tag->total_terbayar,
+                            'status' => $tag->status,
+                            'pembayaran' => $tag->pembayaran
+                        ];
+                    })
                 ];
             });
 
