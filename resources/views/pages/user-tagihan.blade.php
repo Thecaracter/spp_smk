@@ -1,153 +1,185 @@
 @extends('layouts.app')
 
+@push('scripts')
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}">
+    </script>
+@endpush
+
 @section('content')
-    <div class="container mx-auto px-4 py-6" x-data="{
+    <div class="container mx-auto px-4 py-6 max-w-7xl" x-data="{
         activeTab: 'belum_bayar',
-        showPaymentForm: false,
-        showUpdateModal: false,
-        openItems: {},
-        selectedTagihan: null,
-        selectedPembayaran: null,
-        tagihanTemp: null,
-        pembayaranTemp: null,
-        toggleAccordion(id) {
-            this.openItems[id] = !this.openItems[id];
+        showPaymentModal: false,
+        expandedItems: {},
+        selectedBill: null,
+        paymentAmount: '',
+    
+        toggleExpand(id) {
+            this.expandedItems[id] = !this.expandedItems[id];
         },
-        updateForm: {
-            jumlah_bayar: 0,
-            bukti_pembayaran: null,
-            bukti_pembayaran_preview: null,
-            catatan: ''
+    
+        async startPayment(bill) {
+            this.selectedBill = bill;
+            const remainingAmount = bill.total_tagihan - bill.total_terbayar;
+    
+            if (!bill.jenis_pembayaran.dapat_dicicil) {
+                await this.processPayment(remainingAmount);
+            } else {
+                this.paymentAmount = '';
+                this.showPaymentModal = true;
+            }
         },
-        paymentForm: {
-            jumlah_bayar: 0,
-            bukti_pembayaran: null,
-            bukti_pembayaran_preview: null
-        },
-        openUpdateModal(tagihan, pembayaran) {
-            this.tagihanTemp = tagihan;
-            this.pembayaranTemp = pembayaran;
-            this.updateForm.jumlah_bayar = pembayaran.jumlah_bayar;
-            this.updateForm.catatan = pembayaran.catatan || '';
-            this.showUpdateModal = true;
-        },
-        closeUpdateModal() {
-            this.showUpdateModal = false;
-            this.tagihanTemp = null;
-            this.pembayaranTemp = null;
-            this.updateForm = {
-                jumlah_bayar: 0,
-                bukti_pembayaran: null,
-                bukti_pembayaran_preview: null,
-                catatan: ''
-            };
-        },
-        handleImageSelect(event, form) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    if (form === 'update') {
-                        this.updateForm.bukti_pembayaran = e.target.result;
-                        this.updateForm.bukti_pembayaran_preview = e.target.result;
-                    } else {
-                        this.paymentForm.bukti_pembayaran = e.target.result;
-                        this.paymentForm.bukti_pembayaran_preview = e.target.result;
-                    }
-                };
-                reader.readAsDataURL(file);
+    
+        async processPayment(amount) {
+            try {
+                const response = await fetch(`/user/tagihan/${this.selectedBill.id}/bayar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ jumlah_bayar: amount })
+                });
+    
+                const result = await response.json();
+                console.log('Payment result:', result);
+    
+                if (result.success) {
+                    window.snap.pay(result.snap_token, {
+                        onSuccess: async () => {
+                            try {
+                                console.log('Payment success, updating status');
+                                const updateResponse = await fetch(`/user/tagihan/update-status/${result.kode_transaksi}`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                                    }
+                                });
+    
+                                console.log('Update response:', updateResponse);
+                                const updateResult = await updateResponse.json();
+                                console.log('Update result:', updateResult);
+    
+                                if (updateResult.success) {
+                                    this.showPaymentModal = false;
+                                    this.paymentAmount = '';
+                                    alert('Pembayaran berhasil!');
+                                    window.location.reload();
+                                } else {
+                                    throw new Error('Gagal mengupdate status pembayaran');
+                                }
+                            } catch (error) {
+                                console.error('Error updating payment:', error);
+                                alert('Pembayaran berhasil tetapi gagal memperbarui status. Halaman akan dimuat ulang.');
+                                window.location.reload();
+                            }
+                        },
+                        onPending: () => {
+                            alert('Pembayaran pending. Silakan selesaikan pembayaran.');
+                            this.showPaymentModal = false;
+                            this.paymentAmount = '';
+                        },
+                        onError: () => {
+                            alert('Pembayaran gagal.');
+                            window.location.reload();
+                        },
+                        onClose: () => {
+                            this.showPaymentModal = false;
+                            this.paymentAmount = '';
+                        }
+                    });
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat memproses pembayaran');
             }
         }
     }">
-
         <!-- Header Section -->
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Tagihan Pembayaran</h1>
-            <p class="mt-1 text-sm text-gray-500">Kelola dan pantau status pembayaran Anda</p>
-        </div>
+        <header class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-900 sm:text-3xl">Tagihan Pembayaran</h1>
+            <p class="mt-2 text-sm text-gray-600">Kelola dan pantau pembayaran Anda</p>
+        </header>
 
         <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
             <!-- Total Tagihan -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="rounded-full bg-blue-100 p-3">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Total Tagihan</p>
-                            <p class="text-lg font-semibold text-gray-900">
-                                Rp {{ number_format($tagihan->sum('total_tagihan'), 0, ',', '.') }}
-                            </p>
-                        </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-50 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Tagihan</p>
+                        <p class="text-lg font-semibold text-gray-900">
+                            Rp {{ number_format($tagihan->sum('total_tagihan'), 0, ',', '.') }}
+                        </p>
                     </div>
                 </div>
             </div>
 
             <!-- Total Terbayar -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="rounded-full bg-green-100 p-3">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Total Terbayar</p>
-                            <p class="text-lg font-semibold text-green-600">
-                                Rp {{ number_format($tagihan->sum('total_terbayar'), 0, ',', '.') }}
-                            </p>
-                        </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-50 rounded-lg">
+                        <svg class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Terbayar</p>
+                        <p class="text-lg font-semibold text-green-600">
+                            Rp {{ number_format($tagihan->sum('total_terbayar'), 0, ',', '.') }}
+                        </p>
                     </div>
                 </div>
             </div>
 
             <!-- Sisa Tagihan -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="rounded-full bg-red-100 p-3">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Sisa Tagihan</p>
-                            <p class="text-lg font-semibold text-red-600">
-                                Rp
-                                {{ number_format($tagihan->sum('total_tagihan') - $tagihan->sum('total_terbayar'), 0, ',', '.') }}
-                            </p>
-                        </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center">
+                    <div class="p-2 bg-red-50 rounded-lg">
+                        <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Sisa Tagihan</p>
+                        <p class="text-lg font-semibold text-red-600">
+                            Rp
+                            {{ number_format($tagihan->sum('total_tagihan') - $tagihan->sum('total_terbayar'), 0, ',', '.') }}
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="bg-white rounded-lg shadow-sm">
-            <!-- Tabs -->
-            <div class="border-b border-gray-200">
+        <div class="bg-white rounded-xl shadow-sm border">
+            <!-- Tab Navigation -->
+            <div class="border-b">
                 <nav class="flex space-x-8 px-6" aria-label="Tabs">
                     <button @click="activeTab = 'belum_bayar'"
                         :class="{ 'border-primary text-primary': activeTab === 'belum_bayar' }"
-                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm transition-colors">
                         Belum Bayar
                     </button>
                     <button @click="activeTab = 'cicilan'"
                         :class="{ 'border-primary text-primary': activeTab === 'cicilan' }"
-                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
-                        Sedang Dicicil
+                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm transition-colors">
+                        Cicilan
                     </button>
                     <button @click="activeTab = 'lunas'"
                         :class="{ 'border-primary text-primary': activeTab === 'lunas' }"
-                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                        class="py-4 px-1 border-b-2 border-transparent font-medium text-sm transition-colors">
                         Lunas
                     </button>
                 </nav>
@@ -156,26 +188,25 @@
             <!-- Tab Contents -->
             <div class="p-6">
                 <!-- Belum Bayar Tab -->
-                <div x-show="activeTab === 'belum_bayar'">
+                <div x-show="activeTab === 'belum_bayar'" x-cloak>
                     @forelse($tagihan->where('status', 'belum_bayar') as $item)
-                        <div class="bg-white border rounded-lg mb-4">
-                            <!-- Header - Always visible -->
-                            <div class="p-6 cursor-pointer" @click="toggleAccordion('belum_{{ $item->id }}')">
-                                <div class="flex justify-between items-start">
+                        <div class="bg-white border rounded-lg mb-4 overflow-hidden">
+                            <div class="p-4 sm:p-6 cursor-pointer" @click="toggleExpand('belum_{{ $item->id }}')">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                     <div>
-                                        <h3 class="text-lg font-semibold">{{ $item->jenis_pembayaran->nama }}</h3>
+                                        <h3 class="text-lg font-semibold text-gray-900">{{ $item->jenis_pembayaran->nama }}
+                                        </h3>
                                         <p class="text-sm text-gray-500 mt-1">
-                                            Jatuh Tempo:
-                                            {{ \Carbon\Carbon::parse($item->tanggal_jatuh_tempo)->format('d F Y') }}
+                                            Jatuh Tempo: {{ $item->tanggal_jatuh_tempo->format('d F Y') }}
                                         </p>
                                     </div>
-                                    <div class="flex items-center gap-4">
-                                        <p class="text-lg font-semibold">Rp
-                                            {{ number_format($item->total_tagihan, 0, ',', '.') }}
+                                    <div class="flex items-center justify-between sm:justify-end gap-4">
+                                        <p class="text-lg font-semibold">
+                                            Rp {{ number_format($item->total_tagihan, 0, ',', '.') }}
                                         </p>
-                                        <svg class="w-6 h-6 transform transition-transform"
-                                            :class="{ 'rotate-180': openItems['belum_{{ $item->id }}'] }" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-5 h-5 text-gray-400"
+                                            :class="{ 'rotate-180': expandedItems['belum_{{ $item->id }}'] }"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 9l-7 7-7-7" />
                                         </svg>
@@ -183,63 +214,56 @@
                                 </div>
                             </div>
 
-                            <!-- Expandable Content -->
-                            <div x-show="openItems['belum_{{ $item->id }}']" x-collapse>
-                                <div class="px-6 pb-6 border-t pt-4">
-                                    <div class="flex justify-between items-center">
-                                        <div>
-                                            @if ($item->jenis_pembayaran->dapat_dicicil)
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    Dapat dicicil
-                                                </span>
-                                            @else
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    Harus dibayar penuh
-                                                </span>
-                                            @endif
-                                        </div>
-                                        <button
-                                            @click="selectedTagihan = $refs.tagihan_{{ $item->id }}.value; showPaymentForm = true"
-                                            class="inline-flex items-center px-4 py-2 border border-primary text-primary text-sm font-medium rounded-md hover:bg-primary hover:text-white transition-all">
-                                            Bayar Sekarang
-                                        </button>
-                                        <input type="hidden" x-ref="tagihan_{{ $item->id }}"
-                                            value="{{ $item->toJson() }}">
+                            <div x-show="expandedItems['belum_{{ $item->id }}']" x-collapse>
+                                <div class="px-4 sm:px-6 pb-4 sm:pb-6 border-t pt-4">
+                                    <div class="flex flex-wrap gap-2 mb-4">
+                                        @if ($item->jenis_pembayaran->dapat_dicicil)
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                Dapat dicicil
+                                            </span>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                Harus dibayar penuh
+                                            </span>
+                                        @endif
                                     </div>
+                                    <button @click="startPayment({{ json_encode($item) }})"
+                                        class="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition">
+                                        Bayar Sekarang
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-12">
-                            <h3 class="text-sm font-medium text-gray-900">Tidak ada tagihan</h3>
-                            <p class="mt-1 text-sm text-gray-500">Semua tagihan Anda sudah dibayar</p>
+                        <div class="text-center py-8">
+                            <p class="text-gray-500">Tidak ada tagihan yang belum dibayar</p>
                         </div>
                     @endforelse
                 </div>
 
                 <!-- Cicilan Tab -->
-                <div x-show="activeTab === 'cicilan'">
+                <div x-show="activeTab === 'cicilan'" x-cloak>
                     @forelse($tagihan->where('status', 'cicilan') as $item)
-                        <div class="bg-white border rounded-lg mb-4">
-                            <!-- Header - Always visible -->
-                            <div class="p-6 cursor-pointer" @click="toggleAccordion('cicilan_{{ $item->id }}')">
-                                <div class="flex justify-between items-start">
+                        <div class="bg-white border rounded-lg mb-4 overflow-hidden">
+                            <div class="p-4 sm:p-6 cursor-pointer" @click="toggleExpand('cicilan_{{ $item->id }}')">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                     <div>
-                                        <h3 class="text-lg font-semibold">{{ $item->jenis_pembayaran->nama }}</h3>
+                                        <h3 class="text-lg font-semibold text-gray-900">{{ $item->jenis_pembayaran->nama }}
+                                        </h3>
                                         <p class="text-sm text-gray-500 mt-1">
-                                            Sisa Tagihan: Rp
-                                            {{ number_format($item->total_tagihan - $item->total_terbayar, 0, ',', '.') }}
+                                            Terbayar: Rp {{ number_format($item->total_terbayar, 0, ',', '.') }}
+                                            dari Rp {{ number_format($item->total_tagihan, 0, ',', '.') }}
                                         </p>
                                     </div>
-                                    <div class="flex items-center gap-4">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            Cicilan
-                                        </span>
-                                        <svg class="w-6 h-6 transform transition-transform"
-                                            :class="{ 'rotate-180': openItems['cicilan_{{ $item->id }}'] }"
+                                    <div class="flex items-center justify-between sm:justify-end gap-4">
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            Sisa: Rp
+                                            {{ number_format($item->total_tagihan - $item->total_terbayar, 0, ',', '.') }}
+                                        </p>
+                                        <svg class="w-5 h-5 text-gray-400"
+                                            :class="{ 'rotate-180': expandedItems['cicilan_{{ $item->id }}'] }"
                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 9l-7 7-7-7" />
@@ -248,127 +272,73 @@
                                 </div>
                             </div>
 
-                            <!-- Expandable Content -->
-                            <div x-show="openItems['cicilan_{{ $item->id }}']" x-collapse>
-                                <div class="px-6 pb-6 border-t pt-4">
-                                    <!-- Progress Bar -->
-                                    <div class="mt-4">
-                                        <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-primary h-2 rounded-full"
-                                                style="width: {{ $item->total_tagihan > 0 ? ($item->total_terbayar / $item->total_tagihan) * 100 : 0 }}%">
-                                            </div>
-                                        </div>
-                                        <div class="mt-2 text-xs text-gray-500 text-right">
-                                            {{ $item->total_tagihan > 0 ? number_format(($item->total_terbayar / $item->total_tagihan) * 100, 0) : 0 }}%
-                                            terbayar
-                                        </div>
-                                    </div>
-                                    <!-- Payment Details -->
-                                    <div class="mt-4 flex justify-between items-center">
-                                        <div>
-                                            <p class="text-sm text-gray-600">Total Tagihan:</p>
-                                            <p class="font-semibold">Rp
-                                                {{ number_format($item->total_tagihan, 0, ',', '.') }}</p>
-                                        </div>
-                                        <button
-                                            @click="selectedTagihan = $refs.tagihan_{{ $item->id }}.value; showPaymentForm = true"
-                                            class="inline-flex items-center px-4 py-2 border border-primary text-primary text-sm font-medium rounded-md hover:bg-primary hover:text-white">
-                                            Lanjutkan Pembayaran
-                                        </button>
-                                        <input type="hidden" x-ref="tagihan_{{ $item->id }}"
-                                            value="{{ $item->toJson() }}">
-                                    </div>
-
-                                    <!-- Riwayat Pembayaran -->
-                                    @if ($item->pembayaran->isNotEmpty())
-                                        <div class="mt-6">
-                                            <h4 class="text-sm font-medium text-gray-700 mb-2">Riwayat Pembayaran</h4>
-                                            <div class="space-y-4">
-                                                @foreach ($item->pembayaran as $pembayaran)
-                                                    <div class="bg-gray-50 p-4 rounded-lg">
-                                                        <div class="flex justify-between items-start">
-                                                            <div>
-                                                                <p class="text-sm text-gray-600">
-                                                                    {{ $pembayaran->created_at->format('d F Y H:i') }}
-                                                                </p>
-                                                                <p class="font-medium">
-                                                                    Rp
-                                                                    {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}
-                                                                </p>
-                                                            </div>
-                                                            <div class="flex flex-col items-end gap-2">
-                                                                <span
-                                                                    class="px-2 py-1 text-xs font-medium rounded-full
-                                                        {{ $pembayaran->status === 'terverifikasi'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : ($pembayaran->status === 'ditolak'
-                                                                ? 'bg-red-100 text-red-800'
-                                                                : 'bg-yellow-100 text-yellow-800') }}">
-                                                                    {{ ucfirst($pembayaran->status) }}
-                                                                </span>
-
-                                                                @if ($pembayaran->status === 'ditolak')
-                                                                    <button
-                                                                        @click="openUpdateModal({{ $item }}, {{ $pembayaran }})"
-                                                                        class="text-sm px-3 py-1 border border-primary text-primary rounded-md hover:bg-primary hover:text-white">
-                                                                        Update Pembayaran
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-
-                                                        @if ($pembayaran->status === 'ditolak' && $pembayaran->catatan)
-                                                            <div class="mt-2 p-2 bg-red-50 rounded text-sm">
-                                                                <p class="font-medium text-red-800">Catatan Admin:</p>
-                                                                <p class="text-red-600">{{ $pembayaran->catatan }}</p>
-                                                            </div>
-                                                        @endif
-
-                                                        @if ($pembayaran->bukti_pembayaran)
-                                                            <div class="mt-3">
-                                                                <p class="text-xs text-gray-500 mb-1">Bukti Pembayaran:</p>
-                                                                <img src="{{ $pembayaran->bukti_pembayaran }}"
-                                                                    alt="Bukti Pembayaran"
-                                                                    class="w-32 h-32 object-cover rounded-lg cursor-pointer hover:opacity-75"
-                                                                    onclick="window.open(this.src)">
-                                                            </div>
-                                                        @endif
+                            <div x-show="expandedItems['cicilan_{{ $item->id }}']" x-collapse>
+                                <div class="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
+                                    <div class="py-4">
+                                        <h4 class="font-medium mb-3">Riwayat Pembayaran</h4>
+                                        <div class="space-y-3">
+                                            @foreach ($item->pembayaran as $pembayaran)
+                                                <div class="flex justify-between items-center py-2 border-b last:border-0">
+                                                    <div>
+                                                        <p class="font-medium">
+                                                            Rp {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}
+                                                        </p>
+                                                        <p class="text-sm text-gray-500">
+                                                            {{ $pembayaran->created_at->format('d F Y H:i') }}
+                                                        </p>
                                                     </div>
-                                                @endforeach
-                                            </div>
+                                                    @if ($pembayaran->status_transaksi === 'pending')
+                                                        <button
+                                                            @click="$event.stopPropagation(); checkPaymentStatus('{{ $pembayaran->kode_transaksi }}')"
+                                                            class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition">
+                                                            Bayar
+                                                        </button>
+                                                    @else
+                                                        <span
+                                                            class="px-2.5 py-1 text-xs rounded-full 
+                                                        @if ($pembayaran->status_transaksi === 'settlement') bg-green-100 text-green-800
+                                                        @else
+                                                            bg-red-100 text-red-800 @endif">
+                                                            {{ ucfirst($pembayaran->status_transaksi) }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @endif
+                                    </div>
+                                    <button @click="startPayment({{ json_encode($item) }})"
+                                        class="w-full mt-4 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition">
+                                        Bayar Lagi
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-12">
-                            <h3 class="text-sm font-medium text-gray-900">Tidak ada cicilan aktif</h3>
-                            <p class="mt-1 text-sm text-gray-500">Belum ada tagihan yang sedang dicicil</p>
+                        <div class="text-center py-8">
+                            <p class="text-gray-500">Tidak ada tagihan yang sedang dicicil</p>
                         </div>
                     @endforelse
                 </div>
 
                 <!-- Lunas Tab -->
-                <div x-show="activeTab === 'lunas'">
+                <div x-show="activeTab === 'lunas'" x-cloak>
                     @forelse($tagihan->where('status', 'lunas') as $item)
-                        <div class="bg-white border rounded-lg mb-4">
-                            <!-- Header - Always visible -->
-                            <div class="p-6 cursor-pointer" @click="toggleAccordion('lunas_{{ $item->id }}')">
-                                <div class="flex justify-between items-start">
+                        <div class="bg-white border rounded-lg mb-4 overflow-hidden">
+                            <div class="p-4 sm:p-6 cursor-pointer" @click="toggleExpand('lunas_{{ $item->id }}')">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                     <div>
-                                        <h3 class="text-lg font-semibold">{{ $item->jenis_pembayaran->nama }}</h3>
+                                        <h3 class="text-lg font-semibold text-gray-900">
+                                            {{ $item->jenis_pembayaran->nama }}</h3>
                                         <p class="text-sm text-gray-500 mt-1">
                                             Lunas pada: {{ $item->updated_at->format('d F Y') }}
                                         </p>
                                     </div>
-                                    <div class="flex items-center gap-4">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <div class="flex items-center justify-between sm:justify-end gap-4">
+                                        <span class="px-2.5 py-1 text-xs rounded-full bg-green-100 text-green-800">
                                             Lunas
                                         </span>
-                                        <svg class="w-6 h-6 transform transition-transform"
-                                            :class="{ 'rotate-180': openItems['lunas_{{ $item->id }}'] }"
+                                        <svg class="w-5 h-5 text-gray-400"
+                                            :class="{ 'rotate-180': expandedItems['lunas_{{ $item->id }}'] }"
                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 9l-7 7-7-7" />
@@ -377,167 +347,74 @@
                                 </div>
                             </div>
 
-                            <!-- Expandable Content -->
-                            <div x-show="openItems['lunas_{{ $item->id }}']" x-collapse>
-                                <div class="px-6 pb-6 border-t pt-4">
-                                    <!-- Riwayat Pembayaran -->
-                                    @if ($item->pembayaran->isNotEmpty())
-                                        <div class="mt-4">
-                                            <h4 class="text-sm font-medium text-gray-700 mb-2">Riwayat Pembayaran</h4>
-                                            <div class="space-y-4">
-                                                @foreach ($item->pembayaran as $pembayaran)
-                                                    <div class="bg-gray-50 p-4 rounded-lg">
-                                                        <div class="flex justify-between items-start">
-                                                            <div>
-                                                                <p class="text-sm text-gray-600">
-                                                                    {{ $pembayaran->created_at->format('d F Y H:i') }}
-                                                                </p>
-                                                                <p class="font-medium">
-                                                                    Rp
-                                                                    {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}
-                                                                </p>
-                                                            </div>
-                                                            <span
-                                                                class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                                                Terverifikasi
-                                                            </span>
-                                                        </div>
-
-                                                        @if ($pembayaran->bukti_pembayaran)
-                                                            <div class="mt-3">
-                                                                <p class="text-xs text-gray-500 mb-1">Bukti Pembayaran:</p>
-                                                                <img src="{{ $pembayaran->bukti_pembayaran }}"
-                                                                    alt="Bukti Pembayaran"
-                                                                    class="w-32 h-32 object-cover rounded-lg cursor-pointer hover:opacity-75"
-                                                                    onclick="window.open(this.src)">
-                                                            </div>
-                                                        @endif
+                            <div x-show="expandedItems['lunas_{{ $item->id }}']" x-collapse>
+                                <div class="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
+                                    <div class="py-4">
+                                        <h4 class="font-medium mb-3">Riwayat Pembayaran</h4>
+                                        <div class="space-y-3">
+                                            @foreach ($item->pembayaran as $pembayaran)
+                                                <div class="flex justify-between items-center py-2 border-b last:border-0">
+                                                    <div>
+                                                        <p class="font-medium">
+                                                            Rp {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}
+                                                        </p>
+                                                        <p class="text-sm text-gray-500">
+                                                            {{ $pembayaran->created_at->format('d F Y H:i') }}
+                                                        </p>
                                                     </div>
-                                                @endforeach
-                                            </div>
+                                                    <span
+                                                        class="px-2.5 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                                        Selesai
+                                                    </span>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-12">
-                            <h3 class="text-sm font-medium text-gray-900">Belum ada tagihan lunas</h3>
-                            <p class="mt-1 text-sm text-gray-500">Segera lunasi tagihan Anda</p>
+                        <div class="text-center py-8">
+                            <p class="text-gray-500">Tidak ada tagihan yang sudah lunas</p>
                         </div>
                     @endforelse
                 </div>
             </div>
         </div>
 
-        <!-- Modal Pembayaran -->
-        <div x-show="showPaymentForm" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
-
-                <div
-                    class="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-medium text-gray-900">Form Pembayaran</h3>
-                        <button @click="showPaymentForm = false" class="text-gray-400 hover:text-gray-500">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <form @submit.prevent="handleSubmitPembayaran" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Jumlah Bayar</label>
-                            <input type="text" x-model="paymentForm.displayValue"
-                                @input="paymentForm.displayValue = paymentForm.displayValue.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
-                                @change="paymentForm.jumlah_bayar = parseInt(paymentForm.displayValue.replace(/\./g, ''))"
-                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                                placeholder="0" required>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Bukti Pembayaran</label>
-                            <input type="file" @change="handleImageSelect($event, 'payment')" accept="image/*"
-                                class="mt-1 block w-full border border-gray-300 rounded-lg text-sm cursor-pointer file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-primary file:text-white hover:file:bg-primary-dark"
-                                required>
-
-                            <!-- Image Preview -->
-                            <div x-show="paymentForm.bukti_pembayaran_preview" class="mt-2">
-                                <img :src="paymentForm.bukti_pembayaran_preview" class="w-32 h-32 object-cover rounded-lg">
-                            </div>
-                        </div>
-
-                        <div class="mt-6 flex justify-end space-x-3">
-                            <button type="button" @click="showPaymentForm = false"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                Batal
-                            </button>
-                            <button type="submit"
-                                class="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary-dark">
-                                Kirim Pembayaran
-                            </button>
-                        </div>
-                    </form>
+        <!-- Payment Modal -->
+        <div x-show="showPaymentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Modal Update Pembayaran -->
-        <div x-show="showUpdateModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
 
                 <div
-                    class="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-medium text-gray-900">Update Pembayaran</h3>
-                        <button @click="closeUpdateModal" class="text-gray-400 hover:text-gray-500">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div class="bg-red-50 p-4 rounded-lg mb-6">
-                        <p class="text-sm font-medium text-red-800">Pembayaran Sebelumnya Ditolak</p>
-                        <template x-if="pembayaranTemp">
-                            <p class="text-sm text-red-600 mt-1" x-text="'Catatan: ' + pembayaranTemp?.catatan"></p>
-                        </template>
-                    </div>
-
-                    <form @submit.prevent="handleUpdatePembayaran" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Jumlah Bayar</label>
-                            <input type="text" x-model="updateForm.displayValue"
-                                @input="updateForm.displayValue = updateForm.displayValue.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
-                                @change="updateForm.jumlah_bayar = parseInt(updateForm.displayValue.replace(/\./g, ''))"
-                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                                placeholder="0" required>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Bukti Pembayaran Baru</label>
-                            <input type="file" @change="handleImageSelect($event, 'update')" accept="image/*"
-                                class="mt-1 block w-full border border-gray-300 rounded-lg text-sm cursor-pointer file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-primary file:text-white hover:file:bg-primary-dark"
-                                required>
-
-                            <!-- Image Preview -->
-                            <div x-show="updateForm.bukti_pembayaran_preview" class="mt-2">
-                                <img :src="updateForm.bukti_pembayaran_preview" class="w-32 h-32 object-cover rounded-lg">
+                    class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <form @submit.prevent="processPayment(paymentAmount)">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Form Pembayaran</h3>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Jumlah Bayar
+                                </label>
+                                <input type="number" x-model="paymentAmount"
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                    required>
                             </div>
                         </div>
 
-                        <div class="mt-6 flex justify-end space-x-3">
-                            <button type="button" @click="closeUpdateModal"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                Batal
-                            </button>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                             <button type="submit"
-                                class="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary-dark">
-                                Update Pembayaran
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm">
+                                Bayar
+                            </button>
+                            <button type="button" @click="showPaymentModal = false; paymentAmount = ''"
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                Batal
                             </button>
                         </div>
                     </form>
@@ -546,63 +423,65 @@
         </div>
     </div>
 
-    @push('scripts')
-        <script>
-            function handleSubmitPembayaran() {
-                const tagihan = JSON.parse(this.selectedTagihan);
-                const formData = new FormData();
-                formData.append('jumlah_bayar', this.paymentForm.jumlah_bayar);
-                formData.append('bukti_pembayaran', this.paymentForm.bukti_pembayaran);
+    <script>
+        async function checkPaymentStatus(kodeTransaksi) {
+            try {
+                console.log('Checking payment status for:', kodeTransaksi);
+                const response = await fetch(`/user/tagihan/check-status/${kodeTransaksi}`);
+                const data = await response.json();
+                console.log('Status check response:', data);
 
-                fetch(`/user/tagihan/${tagihan.id}/pembayaran`, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.showPaymentForm = false;
+                if (data.success && data.status === 'pending' && data.snap_token) {
+                    window.snap.pay(data.snap_token, {
+                        onSuccess: async () => {
+                            try {
+                                console.log('Payment success, updating status');
+                                const updateResponse = await fetch(
+                                    `/user/tagihan/update-status/${kodeTransaksi}`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector(
+                                                'meta[name="csrf-token"]').content
+                                        }
+                                    });
+
+                                const updateResult = await updateResponse.json();
+                                console.log('Update status response:', updateResult);
+
+                                if (updateResult.success) {
+                                    alert('Pembayaran berhasil!');
+                                    window.location.reload();
+                                } else {
+                                    throw new Error('Gagal mengupdate status pembayaran');
+                                }
+                            } catch (error) {
+                                console.error('Error updating status:', error);
+                                alert(
+                                    'Pembayaran berhasil tetapi gagal memperbarui status. Halaman akan dimuat ulang.');
+                                window.location.reload();
+                            }
+                        },
+                        onPending: () => {
+                            alert('Pembayaran pending. Silakan selesaikan pembayaran.');
+                        },
+                        onError: () => {
+                            alert('Pembayaran gagal.');
                             window.location.reload();
-                        } else {
-                            alert(data.message || 'Terjadi kesalahan');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Terjadi kesalahan sistem');
+                        },
+                        onClose: () => {}
                     });
+                } else if (data.success && data.status === 'settlement') {
+                    alert('Pembayaran sudah berhasil!');
+                    window.location.reload();
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error checking payment status:', error);
+                alert('Terjadi kesalahan saat memeriksa status pembayaran');
             }
-
-            function handleUpdatePembayaran() {
-                const formData = new FormData();
-                formData.append('jumlah_bayar', this.updateForm.jumlah_bayar);
-                formData.append('bukti_pembayaran', this.updateForm.bukti_pembayaran);
-                formData.append('_method', 'PUT');
-
-                fetch(`/user/tagihan/${this.tagihanTemp.id}/pembayaran/${this.pembayaranTemp.id}`, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.closeUpdateModal();
-                            window.location.reload();
-                        } else {
-                            alert(data.message || 'Terjadi kesalahan');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Terjadi kesalahan sistem');
-                    });
-            }
-        </script>
-    @endpush
+        }
+    </script>
 @endsection

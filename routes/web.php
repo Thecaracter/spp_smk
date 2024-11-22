@@ -79,11 +79,13 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Mahasiswa Routes
-    Route::middleware(['role:mahasiswa'])->group(function () {
+    Route::middleware(['role:siswa'])->group(function () {
         Route::prefix('user')->name('user.')->group(function () {
             Route::get('/tagihan', [UserTagihanController::class, 'index'])->name('tagihan.index');
-            Route::post('/tagihan/{tagihan}/pembayaran', [UserTagihanController::class, 'bayar'])->name('tagihan.pembayaran');
-            Route::put('/tagihan/{tagihan}/pembayaran/{pembayaran}', [UserTagihanController::class, 'updatePembayaran'])->name('tagihan.pembayaran.update');
+            Route::post('/tagihan/{tagihan}/bayar', [UserTagihanController::class, 'bayar'])->name('tagihan.bayar');
+            Route::get('/tagihan/check-status/{kodeTransaksi}', [UserTagihanController::class, 'checkStatus'])->name('tagihan.check-status');
+            Route::post('/tagihan/update-status/{kodeTransaksi}', [UserTagihanController::class, 'updateStatus'])->name('tagihan.update-status');
+            Route::post('/tagihan/notification', [UserTagihanController::class, 'notification'])->name('tagihan.notification');
         });
     });
 });

@@ -12,41 +12,32 @@ trait AutoCalculateSisaTagihan
     {
         static::saving(function (Model $model) {
             try {
-                DB::transaction(function () use ($model) {
-                    // Log nilai sebelum kalkulasi
-                    Log::info('Sebelum kalkulasi sisa tagihan', [
-                        'tagihan_id' => $model->id,
-                        'total_tagihan' => $model->total_tagihan,
-                        'total_terbayar_original' => $model->getOriginal('total_terbayar'),
-                        'total_terbayar_new' => $model->total_terbayar
-                    ]);
+                // Hitung sisa tagihan
+                $sisa = $model->total_tagihan - $model->total_terbayar;
 
-                    // Hitung sisa tagihan
-                    $sisa = $model->total_tagihan - $model->total_terbayar;
+                // Update status based on conditions
+                if ($sisa <= 0) {
+                    $model->status = 'lunas';
+                } elseif ($model->total_terbayar > 0) {
+                    $model->status = 'cicilan';
+                } else {
+                    $model->status = 'belum_bayar';
+                }
 
-                    // Update status berdasarkan kondisi pembayaran tanpa modifikasi nilai
-                    $model->status = match (true) {
-                        $sisa <= 0 => 'lunas',
-                        $model->total_terbayar > 0 => 'cicilan',
-                        default => 'belum_bayar'
-                    };
+                Log::info('AutoCalculateSisaTagihan: Updating status', [
+                    'tagihan_id' => $model->id,
+                    'total_tagihan' => $model->total_tagihan,
+                    'total_terbayar' => $model->total_terbayar,
+                    'sisa' => $sisa,
+                    'new_status' => $model->status
+                ]);
 
-                    Log::info('Setelah update status', [
-                        'tagihan_id' => $model->id,
-                        'sisa_tagihan' => $sisa,
-                        'status_baru' => $model->status,
-                        'total_terbayar' => $model->total_terbayar
-                    ]);
-
-                });
             } catch (\Exception $e) {
-                Log::error('Error calculating sisa tagihan: ' . $e->getMessage());
+                Log::error('Error in AutoCalculateSisaTagihan: ' . $e->getMessage());
                 throw $e;
             }
         });
     }
-
-    // Hapus method updateCicilanInfo() karena ini yang menyebabkan perubahan nilai pembayaran
 
     /**
      * Cek status tagihan
@@ -102,5 +93,13 @@ trait AutoCalculateSisaTagihan
 
         $sisaTagihan = $this->total_tagihan - $this->total_terbayar;
         return $jumlahBayar <= $sisaTagihan;
+    }
+
+    /**
+     * Get sisa tagihan
+     */
+    public function getSisaTagihanAttribute()
+    {
+        return $this->total_tagihan - $this->total_terbayar;
     }
 }

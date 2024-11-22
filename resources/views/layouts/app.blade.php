@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('css')
 </head>
 
 <body class="min-h-screen bg-gray-50">

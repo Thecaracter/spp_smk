@@ -57,18 +57,12 @@
                     class="flex items-center space-x-2 px-4 py-2.5 rounded-lg {{ request()->routeIs('pembayaran.*') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' }}"
                     :class="{ 'justify-center': !sidebarOpen }">
                     <span class="material-icons text-lg">payments</span>
-                    <span x-show="sidebarOpen">{{ __('Konfirmasi Pembayaran') }}</span>
-                </a>
-                <a href="{{ route('riwayat.index') }}"
-                    class="flex items-center space-x-2 px-4 py-2.5 rounded-lg {{ request()->routeIs('riwayat.*') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' }}"
-                    :class="{ 'justify-center': !sidebarOpen }">
-                    <span class="material-icons text-lg">history</span>
-                    <span x-show="sidebarOpen">{{ __('Riwayat Pembayaran') }}</span>
+                    <span x-show="sidebarOpen">{{ __('Pembayaran') }}</span>
                 </a>
             </div>
         @endif
 
-        @if (Auth::user()->role === 'mahasiswa')
+        @if (Auth::user()->role === 'siswa')
             <div class="pt-4">
                 <div x-show="sidebarOpen" class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     {{ __('Akademik') }}
