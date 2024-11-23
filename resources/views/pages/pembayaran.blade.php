@@ -23,8 +23,9 @@
                             <select x-model="year" @change="fetchData"
                                 class="flex-1 sm:w-32 px-3 py-2 rounded-lg border-gray-200 focus:ring-2 focus:ring-primary text-sm">
                                 @foreach ($availableYears as $yr)
-                                    <option value="{{ $yr }}" {{ $yr == now()->year ? 'selected' : '' }}>
-                                        {{ $yr }}</option>
+                                    <option value="{{ $yr }}" {{ $yr == $latestYear ? 'selected' : '' }}>
+                                        {{ $yr }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -42,7 +43,7 @@
             <!-- Stats -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white rounded-lg shadow-md p-4">
-                    <div class="text-sm font-semibold text-gray-500">Total Siswa</div>
+                    <div class="text-sm font-semibold text-gray-500">Total Item Tagihan</div>
                     <div class="text-xl md:text-2xl font-bold text-gray-800 mt-1" x-text="stats.total"></div>
                 </div>
 
@@ -103,8 +104,7 @@
                                                 'bg-red-100 text-red-800': payment.status === 'Belum Lunas',
                                                 'bg-gray-100 text-gray-800': payment.status === 'Tidak Ada Tagihan'
                                             }"
-                                            x-text="payment.tagihan.length === 0 ? 'Tidak Ada Tagihan' : payment.status">
-                                        </span>
+                                            x-text="payment.tagihan.length === 0 ? 'Tidak Ada Tagihan' : payment.status"></span>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <button @click="open = !open"
@@ -150,8 +150,7 @@
                                                                     'bg-red-100 text-red-800': tag
                                                                         .status === 'belum_bayar'
                                                                 }"
-                                                                x-text="tag.status === 'belum_bayar' ? 'Belum Bayar' : (tag.status === 'cicilan' ? 'Cicilan' : 'Lunas')">
-                                                            </span>
+                                                                x-text="tag.status === 'belum_bayar' ? 'Belum Bayar' : (tag.status === 'cicilan' ? 'Cicilan' : 'Lunas')"></span>
                                                         </div>
                                                         <div class="mt-2 grid grid-cols-3 gap-4 text-sm">
                                                             <div>
@@ -217,18 +216,21 @@
                             <div class="space-y-2">
                                 <label class="inline-flex items-center">
                                     <input type="radio" x-model="exportType" value="monthly"
-                                        class="form-radio text-primary">
+                                        class="form-radio text-primary" checked>
                                     <span class="ml-2">Data Bulanan</span>
                                 </label>
                                 <div x-show="exportType === 'monthly'" class="flex gap-2 mt-2">
                                     <select x-model="exportMonth" class="form-select flex-1">
                                         <template x-for="(name, index) in months" :key="index">
-                                            <option :value="index + 1" x-text="name"></option>
+                                            <option :value="index + 1" x-text="name"
+                                                :selected="index + 1 === currentMonth"></option>
                                         </template>
                                     </select>
                                     <select x-model="exportYear" class="form-select flex-1">
                                         @foreach ($availableYears as $yr)
-                                            <option value="{{ $yr }}">{{ $yr }}</option>
+                                            <option value="{{ $yr }}" {{ $yr == $latestYear ? 'selected' : '' }}>
+                                                {{ $yr }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -262,7 +264,8 @@
                                         <div class="flex gap-2 flex-1">
                                             <select x-model="endMonth" class="form-select flex-1">
                                                 <template x-for="(name, index) in months" :key="index">
-                                                    <option :value="index + 1" x-text="name"></option>
+                                                    <option :value="index + 1" x-text="name"
+                                                        :selected="index + 1 === currentMonth"></option>
                                                 </template>
                                             </select>
                                             <select x-model="endYear" class="form-select flex-1">
@@ -306,17 +309,17 @@
             document.addEventListener('alpine:init', () => {
                 Alpine.data('payments', () => ({
                     payments: @json($payments),
-                    month: {{ now()->month }},
-                    year: {{ now()->year }},
-                    currentMonth: {{ now()->month }},
+                    month: {{ $currentMonth }},
+                    year: {{ $latestYear }},
+                    currentMonth: {{ $currentMonth }},
                     showExportModal: false,
                     exportType: 'monthly',
-                    exportMonth: {{ now()->month }},
-                    exportYear: {{ now()->year }},
-                    startMonth: {{ now()->month }},
-                    startYear: {{ now()->year }},
-                    endMonth: {{ now()->month }},
-                    endYear: {{ now()->year }},
+                    exportMonth: {{ $currentMonth }},
+                    exportYear: {{ $latestYear }},
+                    startMonth: {{ $currentMonth }},
+                    startYear: {{ $latestYear }},
+                    endMonth: {{ $currentMonth }},
+                    endYear: {{ $latestYear }},
                     months: [
                         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -327,6 +330,7 @@
                     },
 
                     openExportModal() {
+                        this.exportType = 'monthly';
                         this.exportMonth = this.month;
                         this.exportYear = this.year;
                         this.startMonth = this.month;
@@ -341,17 +345,29 @@
                     },
 
                     get stats() {
-                        const total = this.payments.length;
-                        const withTagihan = this.payments.filter(p => p.tagihan.length > 0).length;
-                        const paid = this.payments.filter(p => p.tagihan.length > 0 && p.status ===
-                            'Lunas').length;
-                        const unpaid = withTagihan - paid;
+                        let totalItems = 0;
+                        let paidItems = 0;
+
+                        this.payments.forEach(payment => {
+                            if (payment.tagihan && payment.tagihan.length > 0) {
+                                payment.tagihan.forEach(tag => {
+                                    totalItems++;
+                                    if (tag.status === 'lunas') {
+                                        paidItems++;
+                                    }
+                                });
+                            }
+                        });
+
+                        const unpaidItems = totalItems - paidItems;
+                        const percentage = totalItems > 0 ? Math.round((paidItems / totalItems) * 100) :
+                            0;
 
                         return {
-                            total,
-                            paid,
-                            unpaid,
-                            percentage: withTagihan > 0 ? Math.round((paid / withTagihan) * 100) : 0
+                            total: totalItems,
+                            paid: paidItems,
+                            unpaid: unpaidItems,
+                            percentage: percentage
                         };
                     },
 
@@ -386,7 +402,7 @@
                                 });
                             if (!response.ok) throw new Error('Network response was not ok');
                             const data = await response.json();
-                            this.payments = data;
+                            this.payments = data.payments;
                         } catch (error) {
                             console.error('Error:', error);
                             alert('Terjadi kesalahan saat memfilter data');
