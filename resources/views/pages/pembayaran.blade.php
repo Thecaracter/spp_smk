@@ -63,8 +63,8 @@
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <!-- Table untuk layar besar -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hidden lg:block">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
@@ -180,8 +180,8 @@
                                                 </template>
                                             </template>
                                             <template x-if="payment.tagihan.length === 0">
-                                                <div class="text-center text-gray-500 text-sm py-2">
-                                                    Tidak ada tagihan
+                                                <div class="text-center text-gray-500 text-sm py-4 bg-white rounded-lg">
+                                                    Belum ada tagihan untuk periode ini
                                                 </div>
                                             </template>
                                         </div>
@@ -200,6 +200,109 @@
                         </tbody>
                     </template>
                 </table>
+            </div>
+
+            <!-- Card view untuk layar kecil dan medium -->
+            <div class="lg:hidden space-y-4">
+                <template x-if="payments.length">
+                    <template x-for="(payment, index) in payments" :key="payment.id">
+                        <div class="bg-white rounded-lg shadow-md p-4" x-data="{ open: false }">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <div class="font-medium text-gray-900" x-text="payment.name"></div>
+                                    <div class="text-sm text-gray-500" x-text="payment.nim"></div>
+                                    <div class="text-sm text-gray-500" x-text="payment.kelas"></div>
+                                </div>
+                                <span
+                                    :class="{
+                                        'px-2 py-1 text-xs font-semibold rounded-full': true,
+                                        'bg-green-100 text-green-800': payment.status === 'Lunas',
+                                        'bg-red-100 text-red-800': payment.status === 'Belum Lunas',
+                                        'bg-gray-100 text-gray-800': payment.status === 'Tidak Ada Tagihan'
+                                    }"
+                                    x-text="payment.tagihan.length === 0 ? 'Tidak Ada Tagihan' : payment.status"></span>
+                            </div>
+
+                            <div class="flex items-center justify-between text-sm">
+                                <div>
+                                    <template
+                                        x-if="payment.tagihan && payment.tagihan.some(t => t.pembayaran && t.pembayaran.length > 0)">
+                                        <div class="text-gray-500">
+                                            Terakhir bayar: <span
+                                                x-text="formatDate(payment.tagihan.find(t => t.pembayaran && t.pembayaran.length > 0).pembayaran[0].created_at)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button @click="open = !open"
+                                    class="text-blue-600 hover:text-blue-800 focus:outline-none flex items-center gap-1">
+                                    <span>Detail Tagihan</span>
+                                    <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Detail Tagihan -->
+                            <div x-show="open" x-collapse>
+                                <div class="mt-4 space-y-3">
+                                    <template x-if="payment.tagihan.length > 0">
+                                        <template x-for="tag in payment.tagihan" :key="tag.id">
+                                            <div class="p-3 bg-gray-50 rounded-lg">
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <div class="font-medium text-gray-900" x-text="tag.jenis"></div>
+                                                    <span
+                                                        :class="{
+                                                            'px-2 py-1 text-xs font-semibold rounded-full': true,
+                                                            'bg-green-100 text-green-800': tag.status === 'lunas',
+                                                            'bg-yellow-100 text-yellow-800': tag.status === 'cicilan',
+                                                            'bg-red-100 text-red-800': tag.status === 'belum_bayar'
+                                                        }"
+                                                        x-text="tag.status === 'belum_bayar' ? 'Belum Bayar' : (tag.status === 'cicilan' ? 'Cicilan' : 'Lunas')"></span>
+                                                </div>
+                                                <div class="space-y-2 text-sm">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-500">Total:</span>
+                                                        <span class="font-medium"
+                                                            x-text="formatCurrency(tag.total_tagihan)"></span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-500">Terbayar:</span>
+                                                        <span class="font-medium"
+                                                            x-text="formatCurrency(tag.total_terbayar)"></span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-500">Sisa:</span>
+                                                        <span class="font-medium"
+                                                            x-text="formatCurrency(tag.total_tagihan - tag.total_terbayar)"></span>
+                                                    </div>
+                                                </div>
+                                                <template x-if="tag.pembayaran && tag.pembayaran.length > 0">
+                                                    <div class="mt-2 text-xs text-gray-500">
+                                                        Terakhir bayar: <span
+                                                            x-text="formatDate(tag.pembayaran[0].created_at)"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+                                    <template x-if="payment.tagihan.length === 0">
+                                        <div class="text-center text-gray-500 text-sm p-4 bg-gray-50 rounded-lg">
+                                            Belum ada tagihan untuk periode ini
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+
+                <template x-if="!payments.length">
+                    <div class="bg-white rounded-lg shadow-md p-4 text-center text-gray-500">
+                        Tidak ada data pembayaran
+                    </div>
+                </template>
             </div>
 
             <!-- Export Modal -->
