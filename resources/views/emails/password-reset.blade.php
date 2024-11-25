@@ -130,8 +130,8 @@
     <div class="wrapper">
         <div class="card">
             <div class="header">
-                <img src="https://lppm.stikpartoraja.ac.id/public/custom/assetsFoto/logo.png" alt="Logo Kampus"
-                    class="logo">
+                <img src="https://res.cloudinary.com/djapytwxw/image/upload/v1732467538/logo-removebg-preview_1_p8mkwj.png"
+                    alt="Logo Kampus" class="logo">
                 <h1>Reset Password</h1>
             </div>
             <div class="content">

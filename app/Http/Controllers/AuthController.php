@@ -22,7 +22,6 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            // Tambahkan pesan sukses
             session()->flash('success', 'Berhasil login!');
 
             return redirect()->intended('dashboard');
