@@ -34,7 +34,7 @@
                     <div class="relative">
                         <input type="text" id="searchInput"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
-                            placeholder="Cari berdasarkan nama, email, atau NISN...">
+                            placeholder="Cari berdasarkan nama, email, atau NIT...">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
                                 fill="currentColor">
@@ -66,10 +66,14 @@
                                     Email</th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                                    NISN</th>
+                                    NIT</th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Kelas</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                    Jurusan
+                                </th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Status</th>
@@ -96,8 +100,11 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->email }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->nisn }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->nit }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->kelas }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ $user->jurusan->nama_jurusan }}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->status_siswa }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->alamat }}</td>
@@ -115,7 +122,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
                                             <button
-                                                onclick="openEditModal('{{ $user->id }}', '{{ json_encode($user) }}')"
+                                                onclick="openEditModal('{{ $user->id }}', '{{ addslashes(json_encode($user)) }}')"
                                                 class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-md transition-colors duration-200">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -195,8 +202,8 @@
                                     </div>
 
                                     <div class="space-y-2">
-                                        <label class="block text-sm font-medium text-gray-700">NISN</label>
-                                        <input type="text" name="nisn" required
+                                        <label class="block text-sm font-medium text-gray-700">NIT</label>
+                                        <input type="text" name="nit" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                     </div>
 
@@ -205,7 +212,15 @@
                                         <input type="number" name="kelas" required min="1"
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                     </div>
-
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">Jurusan</label>
+                                        <select name="jurusan_id" required
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                            @foreach ($jurusans as $jurusan)
+                                                <option value="{{ $jurusan->id }}">{{ $jurusan->nama_jurusan }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div class="space-y-2">
                                         <label class="block text-sm font-medium text-gray-700">Status Siswa</label>
                                         <select name="status_siswa" required
@@ -320,8 +335,8 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">NISN</label>
-                                        <input type="text" name="nisn" id="editNisn" required
+                                        <label class="block text-sm font-medium text-gray-700">NIT</label>
+                                        <input type="text" name="nit" id="editNit" required
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                     </div>
 
@@ -330,7 +345,15 @@
                                         <input type="number" name="kelas" id="editKelas" required min="1"
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                     </div>
-
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Jurusan</label>
+                                        <select name="jurusan_id" id="editJurusanId" required
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                            @foreach ($jurusans as $jurusan)
+                                                <option value="{{ $jurusan->id }}">{{ $jurusan->nama_jurusan }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">Status Siswa</label>
                                         <select name="status_siswa" id="editStatusSiswa" required
@@ -432,24 +455,47 @@
 @push('scripts')
     <script>
         function openEditModal(userId, userData) {
-            const modal = document.getElementById('editModal');
-            const form = document.getElementById('editForm');
-            const user = JSON.parse(userData);
+            try {
+                const modal = document.getElementById('editModal');
+                const form = document.getElementById('editForm');
 
-            form.action = `/users/${userId}`;
+                // Debug untuk melihat data mentah
+                console.log('Raw userData:', userData);
 
-            document.getElementById('editName').value = user.name;
-            document.getElementById('editEmail').value = user.email;
-            document.getElementById('editNisn').value = user.nisn;
-            document.getElementById('editKelas').value = user.kelas;
-            document.getElementById('editStatusSiswa').value = user.status_siswa;
-            document.getElementById('editNoTelepon').value = user.no_telepon;
-            document.getElementById('editAlamat').value = user.alamat;
-            document.getElementById('editTahunMasuk').value = user.tahun_masuk;
-            document.getElementById('editRole').value = user.role;
+                // Parse userData dengan lebih aman
+                let user;
+                try {
+                    // Hapus karakter escape yang tidak perlu
+                    const cleanedUserData = userData.replace(/\\"/g, '"');
+                    user = JSON.parse(cleanedUserData);
+                } catch (e) {
+                    console.error('Error parsing user data:', e);
+                    // Jika parsing gagal, coba parse userData langsung
+                    user = userData;
+                }
 
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+                console.log('Parsed user:', user);
+
+                form.action = `/users/${userId}`;
+
+                // Set nilai dengan pengecekan null
+                document.getElementById('editName').value = user.name || '';
+                document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editNit').value = user.nit || '';
+                document.getElementById('editKelas').value = user.kelas || '';
+                document.getElementById('editJurusanId').value = user.jurusan_id || '';
+                document.getElementById('editStatusSiswa').value = user.status_siswa || 'aktif';
+                document.getElementById('editNoTelepon').value = user.no_telepon || '';
+                document.getElementById('editAlamat').value = user.alamat || '';
+                document.getElementById('editTahunMasuk').value = user.tahun_masuk || '';
+                document.getElementById('editRole').value = user.role || 'siswa';
+
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                console.error('Error in openEditModal:', error);
+                alert('Terjadi kesalahan saat membuka modal edit');
+            }
         }
 
         function openDeleteModal(userId) {
@@ -507,10 +553,10 @@
                     trs.forEach(function(tr) {
                         const nama = tr.querySelector('td:nth-child(2)');
                         const email = tr.querySelector('td:nth-child(3)');
-                        const nisn = tr.querySelector('td:nth-child(4)');
+                        const nit = tr.querySelector('td:nth-child(4)');
 
-                        if (nama && email && nisn) {
-                            const text = nama.textContent + email.textContent + nisn.textContent;
+                        if (nama && email && nit) {
+                            const text = nama.textContent + email.textContent + nit.textContent;
                             if (text.toLowerCase().includes(filter)) {
                                 tr.style.display = '';
                             } else {

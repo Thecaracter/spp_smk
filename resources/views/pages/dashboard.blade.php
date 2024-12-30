@@ -158,7 +158,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
                                                 {{ $payment->tagihan->user->name }}</div>
-                                            <div class="text-sm text-gray-500">{{ $payment->tagihan->user->nisn }}</div>
+                                            <div class="text-sm text-gray-500">{{ $payment->tagihan->user->nit }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
@@ -213,7 +213,7 @@
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">{{ $siswa->name }}</div>
-                                            <div class="text-sm text-gray-500">{{ $siswa->nisn }}</div>
+                                            <div class="text-sm text-gray-500">{{ $siswa->nit }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">Rp
@@ -247,7 +247,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-800">Selamat Datang, {{ auth()->user()->name }}</h1>
-                        <p class="text-gray-600">NISN: {{ auth()->user()->nisn }}</p>
+                        <p class="text-gray-600">nit: {{ auth()->user()->nit }}</p>
                     </div>
                     <div class="text-right bg-blue-50 px-4 py-2 rounded-lg">
                         <p class="text-sm text-gray-600">Kelas</p>

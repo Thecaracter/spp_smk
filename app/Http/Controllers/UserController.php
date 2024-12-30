@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Jurusan;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -15,8 +16,9 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::paginate(10);
-        return view('pages.user', compact('users'));
+        $users = User::with('jurusan')->paginate(10);
+        $jurusans = Jurusan::all();
+        return view('pages.user', compact('users', 'jurusans'));
     }
 
     public function store(Request $request)
@@ -25,11 +27,12 @@ class UserController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
-                'nisn' => 'required|string|unique:users',
+                'nit' => 'required|string|unique:users',
                 'alamat' => 'required|string',
                 'no_telepon' => 'required|string',
                 'tahun_masuk' => 'required|string',
                 'kelas' => 'required|integer',
+                'jurusan_id' => 'required|exists:jurusan,id',
                 'status_siswa' => 'required|in:aktif,do,lulus',
                 'role' => 'required|in:admin,siswa',
                 'password' => ['required', Password::defaults()],
@@ -59,6 +62,7 @@ class UserController extends Controller
                 'no_telepon' => 'sometimes|required|string',
                 'tahun_masuk' => 'sometimes|required|string',
                 'kelas' => 'sometimes|required|integer',
+                'jurusan_id' => 'sometimes|required|exists:jurusan,id',
                 'status_siswa' => 'sometimes|required|in:aktif,do,lulus',
                 'role' => 'required|in:admin,siswa',
                 'password' => ['nullable', 'confirmed', Password::defaults()],
@@ -71,11 +75,11 @@ class UserController extends Controller
                 $validated['email'] = $request->email;
             }
 
-            if ($request->has('nisn')) {
+            if ($request->has('nit')) {
                 $request->validate([
-                    'nisn' => 'required|string|unique:users,nisn,' . $user->id,
+                    'nit' => 'required|string|unique:users,nit,' . $user->id,
                 ]);
-                $validated['nisn'] = $request->nisn;
+                $validated['nit'] = $request->nit;
             }
 
             if (!empty($validated['password'])) {

@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\User;
+use App\Models\Jurusan;
 use App\Models\Tagihan;
-use App\Models\JenisPembayaran;
 use Illuminate\Http\Request;
+use App\Models\JenisPembayaran;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
+use App\Notifications\TagihanNotification;
 
 class TagihanController extends Controller
 {
@@ -30,18 +32,20 @@ class TagihanController extends Controller
                 ->paginate(10);
 
             $jenisPembayaran = JenisPembayaran::all();
+            $jurusan = Jurusan::all();
 
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'data' => [
                         'users' => $users,
-                        'jenisPembayaran' => $jenisPembayaran
+                        'jenisPembayaran' => $jenisPembayaran,
+                        'jurusan' => $jurusan
                     ]
                 ]);
             }
 
-            return view('pages.tagihan', compact('users', 'jenisPembayaran'));
+            return view('pages.tagihan', compact('users', 'jenisPembayaran', 'jurusan'));
         } catch (Exception $e) {
             Log::error('Error in TagihanController@index: ' . $e->getMessage());
 
@@ -123,6 +127,24 @@ class TagihanController extends Controller
                 ]);
 
                 $tagihan->save();
+
+                // Debug log
+                Log::info('Mencoba kirim notifikasi', [
+                    'user_id' => $user->id,
+                    'no_telepon' => $user->no_telepon
+                ]);
+
+                // Tambahkan notifikasi SMS disini
+                if ($user->no_telepon) {
+                    try {
+                        $user->notify(new TagihanNotification($tagihan));
+                        Log::info('Notifikasi berhasil dikirim');
+                    } catch (\Exception $e) {
+                        Log::error('Error saat kirim notifikasi: ' . $e->getMessage());
+                        // Tidak throw error agar transaksi tetap berjalan
+                    }
+                }
+
                 DB::commit();
 
                 return response()->json([
@@ -137,6 +159,152 @@ class TagihanController extends Controller
             Log::error('Error in TagihanController@store: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Gagal membuat tagihan: ' . $e->getMessage(),
+                'success' => false
+            ], 500);
+        }
+    }
+
+    public function checkAffectedStudents(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'jurusan_id' => 'required|exists:jurusan,id',
+                'kelas' => 'required|in:10,11,12',
+            ]);
+
+            $count = User::where('role', 'siswa')
+                ->where('jurusan_id', $validated['jurusan_id'])
+                ->where('kelas', $validated['kelas'])
+                ->where('status_siswa', 'aktif')
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'count' => $count
+            ]);
+        } catch (Exception $e) {
+            Log::error('Error in TagihanController@checkAffectedStudents: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek jumlah siswa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function bulkStore(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'jurusan_id' => 'required|exists:jurusan,id',
+                'kelas' => 'required|in:10,11,12',
+                'jenis_pembayaran_id' => 'required|exists:jenis_pembayaran,id',
+                'tanggal_jatuh_tempo' => 'required|date|after:today',
+            ]);
+
+            DB::beginTransaction();
+            try {
+                $jenisPembayaran = JenisPembayaran::findOrFail($validated['jenis_pembayaran_id']);
+
+                // Ambil semua siswa yang sesuai kriteria
+                $users = User::where('role', 'siswa')
+                    ->where('jurusan_id', $validated['jurusan_id'])
+                    ->where('kelas', $validated['kelas'])
+                    ->where('status_siswa', 'aktif')
+                    ->get();
+
+                if ($users->isEmpty()) {
+                    throw new Exception('Tidak ada siswa yang sesuai dengan kriteria');
+                }
+
+                $notificationErrors = [];
+                $successCount = 0;
+
+                // Buat tagihan untuk setiap siswa
+                foreach ($users as $user) {
+                    $tagihan = new Tagihan([
+                        'user_id' => $user->id,
+                        'jenis_pembayaran_id' => $jenisPembayaran->id,
+                        'total_tagihan' => $jenisPembayaran->nominal,
+                        'tanggal_jatuh_tempo' => $validated['tanggal_jatuh_tempo'],
+                        'status' => 'belum_bayar'
+                    ]);
+                    $tagihan->save();
+
+                    // Kirim notifikasi jika user punya nomor telepon
+                    if ($user->no_telepon) {
+                        try {
+                            $user->notify(new TagihanNotification($tagihan));
+                            $successCount++;
+                        } catch (\Exception $e) {
+                            // Catat error notifikasi tapi jangan hentikan prosesnya
+                            $notificationErrors[] = "Gagal mengirim notifikasi ke {$user->name}: {$e->getMessage()}";
+                            Log::error("Gagal mengirim notifikasi bulk tagihan: {$e->getMessage()}", [
+                                'user_id' => $user->id,
+                                'no_telepon' => $user->no_telepon
+                            ]);
+                        }
+                    }
+                }
+
+                DB::commit();
+
+                // Siapkan pesan response
+                $message = 'Tagihan massal berhasil dibuat untuk ' . $users->count() . ' siswa. ';
+                if ($successCount > 0) {
+                    $message .= "Berhasil mengirim {$successCount} notifikasi. ";
+                }
+                if (!empty($notificationErrors)) {
+                    $message .= "Terdapat " . count($notificationErrors) . " gagal kirim notifikasi.";
+                }
+
+                return response()->json([
+                    'message' => $message,
+                    'success' => true,
+                    'notification_errors' => $notificationErrors,
+                    'total_tagihan' => $users->count(),
+                    'notification_sent' => $successCount
+                ]);
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (Exception $e) {
+            Log::error('Error in TagihanController@bulkStore: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Gagal membuat tagihan massal: ' . $e->getMessage(),
+                'success' => false
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, User $user, Tagihan $tagihan)
+    {
+        try {
+            $validated = $request->validate([
+                'tanggal_jatuh_tempo' => 'required|date|after:today',
+            ]);
+
+            DB::beginTransaction();
+            try {
+                $tagihan->update([
+                    'tanggal_jatuh_tempo' => $validated['tanggal_jatuh_tempo']
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'message' => 'Tagihan berhasil diperbarui',
+                    'success' => true
+                ]);
+            } catch (Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (Exception $e) {
+            Log::error('Error in TagihanController@update: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Gagal memperbarui tagihan: ' . $e->getMessage(),
                 'success' => false
             ], 500);
         }

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\JurusanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RiwayatController;
 use App\Http\Controllers\TagihanController;
@@ -44,6 +45,15 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin Routes
     Route::middleware(['role:admin'])->group(function () {
+        // Jurusan Management
+        Route::prefix('jurusan')->group(function () {
+            Route::get('/', [JurusanController::class, 'index'])->name('jurusan.index');
+            Route::post('/', [JurusanController::class, 'store'])->name('jurusan.store');
+            Route::get('/{jurusan}/edit', [JurusanController::class, 'edit'])->name('jurusan.edit');
+            Route::put('/{jurusan}', [JurusanController::class, 'update'])->name('jurusan.update');
+            Route::delete('/{jurusan}', [JurusanController::class, 'destroy'])->name('jurusan.destroy');
+        });
+
         // Users Management
         Route::prefix('users')->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('users.index');
@@ -62,7 +72,11 @@ Route::middleware(['auth'])->group(function () {
 
         // Bills Management
         Route::prefix('tagihan')->name('tagihan.')->group(function () {
+
             Route::get('/', [TagihanController::class, 'index'])->name('index');
+            Route::get('/check-affected-students', [TagihanController::class, 'checkAffectedStudents'])->name('check-affected-students');
+            Route::post('/bulk-store', [TagihanController::class, 'bulkStore'])->name('bulk-store');
+
             Route::get('/{user}/detail', [TagihanController::class, 'getDetail'])->name('detail');
             Route::get('/jenis-pembayaran/{jenisPembayaran}', [TagihanController::class, 'getJenisPembayaran'])->name('jenis-pembayaran.detail');
             Route::get('/{user}/statistics', [TagihanController::class, 'getStatistics'])->name('statistics');
@@ -70,7 +84,6 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{user}/{tagihan}', [TagihanController::class, 'update'])->name('update');
             Route::delete('/{user}/{tagihan}', [TagihanController::class, 'destroy'])->name('destroy');
         });
-
         // Payments Management
         Route::prefix('pembayaran')->name('pembayaran.')->group(function () {
             Route::get('/', [PembayaranController::class, 'index'])->name('index');

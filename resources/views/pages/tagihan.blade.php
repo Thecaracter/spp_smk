@@ -7,11 +7,17 @@
         <div class="mb-6" x-show="!showUserDetail">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-semibold">Daftar Siswa dan Tunggakan</h1>
-                <div class="relative">
-                    <input type="text" id="searchInput" x-model="searchQuery" @input="handleSearch()"
-                        class="w-64 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-primary"
-                        placeholder="Cari siswa...">
-                    <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
+                <div class="flex items-center space-x-4">
+                    <button @click="handleShowBulkModal()"
+                        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark">
+                        Tagihan Massal
+                    </button>
+                    <div class="relative">
+                        <input type="text" id="searchInput" x-model="searchQuery" @input="handleSearch()"
+                            class="w-64 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-primary"
+                            placeholder="Cari siswa...">
+                        <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
+                    </div>
                 </div>
             </div>
 
@@ -34,7 +40,7 @@
                         <tbody class="bg-white divide-y divide-gray-200" id="searchResults">
                             @foreach ($users as $user)
                                 <tr class="search-row hover:bg-gray-50" data-user-id="{{ $user->id }}">
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->nisn }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $user->nit }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-10 w-10">
@@ -108,7 +114,7 @@
                                     x-text="selectedUser.name.charAt(0).toUpperCase()"></div>
                                 <div>
                                     <h2 class="text-xl font-semibold" x-text="selectedUser.name"></h2>
-                                    <p class="text-gray-600" x-text="'NIS: ' + selectedUser.nisn"></p>
+                                    <p class="text-gray-600" x-text="'NIS: ' + selectedUser.nit"></p>
                                 </div>
                             </div>
                         </template>
@@ -338,6 +344,97 @@
                 </div>
             </div>
         </div>
+        <!-- Modal Bulk Tagihan -->
+        <div x-show="showBulkModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
+            @keydown.escape.window="showBulkModal = false">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+
+                <div
+                    class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <form @submit.prevent="handleCreateBulkTagihan">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Tambah Tagihan Massal</h3>
+                                <button type="button" @click="showBulkModal = false"
+                                    class="text-gray-400 hover:text-gray-500">
+                                    <span class="material-icons">close</span>
+                                </button>
+                            </div>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Jurusan</label>
+                                    <select x-model="bulkForm.jurusan_id" @change="checkAffectedStudents()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="">Pilih Jurusan</option>
+                                        @foreach ($jurusan as $j)
+                                            <option value="{{ $j->id }}">{{ $j->nama_jurusan }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Kelas</label>
+                                    <select x-model="bulkForm.kelas" @change="checkAffectedStudents()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="">Pilih Kelas</option>
+                                        <option value="10">Kelas 10</option>
+                                        <option value="11">Kelas 11</option>
+                                        <option value="12">Kelas 12</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Jenis Pembayaran</label>
+                                    <select x-model="bulkForm.jenis_pembayaran_id"
+                                        @change="handleBulkJenisPembayaranChange($event)"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="">Pilih Jenis Pembayaran</option>
+                                        @foreach ($jenisPembayaran as $jenis)
+                                            <option value="{{ $jenis->id }}">{{ $jenis->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Total Tagihan</label>
+                                    <div class="relative mt-1">
+                                        <input type="text" x-model="bulkForm.formatted_nominal" disabled
+                                            class="block w-full rounded-md border-gray-300 bg-gray-50 cursor-not-allowed shadow-sm">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Tanggal Jatuh Tempo</label>
+                                    <input type="date" x-model="bulkForm.tanggal_jatuh_tempo" required
+                                        min="{{ date('Y-m-d') }}"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+
+                                <div x-show="affectedStudents !== null" class="mt-4">
+                                    <p class="text-sm text-gray-600">
+                                        Jumlah siswa yang akan ditagih: <span class="font-semibold"
+                                            x-text="affectedStudents"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button type="submit" :disabled="bulkForm.loading || affectedStudents === 0"
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                Simpan
+                            </button>
+                            <button type="button" @click="showBulkModal = false"
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                Batal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -347,10 +444,21 @@
                     showUserDetail: false,
                     showCreateModal: false,
                     showEditModal: false,
+                    showBulkModal: false,
                     selectedUser: null,
                     selectedTagihan: null,
                     searchQuery: '',
+                    affectedStudents: null,
                     createForm: {
+                        jenis_pembayaran_id: '',
+                        tanggal_jatuh_tempo: '',
+                        nominal: 0,
+                        loading: false,
+                        formatted_nominal: 'Rp 0'
+                    },
+                    bulkForm: {
+                        jurusan_id: '',
+                        kelas: '',
                         jenis_pembayaran_id: '',
                         tanggal_jatuh_tempo: '',
                         nominal: 0,
@@ -472,6 +580,49 @@
                         this.showCreateModal = true;
                     },
 
+                    handleShowBulkModal() {
+                        this.bulkForm = {
+                            jurusan_id: '',
+                            kelas: '',
+                            jenis_pembayaran_id: '',
+                            tanggal_jatuh_tempo: '',
+                            nominal: 0,
+                            loading: false,
+                            formatted_nominal: this.formatCurrency(0)
+                        };
+                        this.affectedStudents = null;
+                        this.showBulkModal = true;
+                    },
+
+                    async checkAffectedStudents() {
+                        if (!this.bulkForm.jurusan_id || !this.bulkForm.kelas) {
+                            this.affectedStudents = null;
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(
+                                `/tagihan/check-affected-students?jurusan_id=${this.bulkForm.jurusan_id}&kelas=${this.bulkForm.kelas}`, {
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+
+                            if (!response.ok) {
+                                throw new Error('Gagal mengecek jumlah siswa');
+                            }
+
+                            const data = await response.json();
+                            this.affectedStudents = data.count;
+                        } catch (error) {
+                            console.error('Error checking affected students:', error);
+                            Toast.error(error.message || 'Gagal mengecek jumlah siswa');
+                            this.affectedStudents = null;
+                        }
+                    },
+
                     async handleJenisPembayaranChange(event) {
                         const id = event.target.value;
                         if (!id) {
@@ -498,6 +649,36 @@
                             this.createForm.formatted_nominal = this.formatCurrency(0);
                         } finally {
                             this.createForm.loading = false;
+                        }
+                    },
+
+                    async handleBulkJenisPembayaranChange(event) {
+                        const id = event.target.value;
+                        if (!id) {
+                            this.bulkForm.nominal = 0;
+                            this.bulkForm.formatted_nominal = this.formatCurrency(0);
+                            return;
+                        }
+
+                        this.bulkForm.loading = true;
+                        try {
+                            const jenisPembayaran = @json($jenisPembayaran);
+                            const selectedJenis = jenisPembayaran.find(j => j.id == id);
+
+                            if (selectedJenis) {
+                                this.bulkForm.nominal = selectedJenis.nominal;
+                                this.bulkForm.formatted_nominal = this.formatCurrency(selectedJenis.nominal);
+                                await this.checkAffectedStudents();
+                            } else {
+                                throw new Error('Jenis pembayaran tidak ditemukan');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            Toast.error(error.message || 'Gagal memuat detail jenis pembayaran');
+                            this.bulkForm.nominal = 0;
+                            this.bulkForm.formatted_nominal = this.formatCurrency(0);
+                        } finally {
+                            this.bulkForm.loading = false;
                         }
                     },
 
@@ -537,6 +718,41 @@
                         } catch (error) {
                             console.error('Error creating tagihan:', error);
                             Toast.error(error.message || 'Gagal membuat tagihan');
+                        }
+                    },
+
+                    async handleCreateBulkTagihan(event) {
+                        event.preventDefault();
+
+                        try {
+                            if (this.affectedStudents === 0) {
+                                Toast.error('Tidak ada siswa yang akan ditagih');
+                                return;
+                            }
+
+                            const response = await fetch('/tagihan/bulk-store', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify(this.bulkForm)
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok) {
+                                this.showBulkModal = false;
+                                Toast.success(result.message || 'Tagihan massal berhasil dibuat');
+                                window.location.reload();
+                            } else {
+                                throw new Error(result.message || 'Terjadi kesalahan saat membuat tagihan massal');
+                            }
+                        } catch (error) {
+                            console.error('Error creating bulk tagihan:', error);
+                            Toast.error(error.message || 'Gagal membuat tagihan massal');
                         }
                     },
 

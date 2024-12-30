@@ -15,11 +15,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'nisn',
+        'nit',
         'alamat',
         'no_telepon',
         'tahun_masuk',
         'kelas',
+        'jurusan_id',
         'total_tunggakan',
         'status_siswa',
         'role',
@@ -45,7 +46,6 @@ class User extends Authenticatable
         return $this->hasMany(Tagihan::class);
     }
 
-
     public function pembayaran()
     {
         return $this->hasManyThrough(Pembayaran::class, Tagihan::class);
@@ -54,6 +54,11 @@ class User extends Authenticatable
     public function verifikasi_pembayaran()
     {
         return $this->hasMany(Pembayaran::class, 'verifikasi_oleh');
+    }
+
+    public function jurusan()
+    {
+        return $this->belongsTo(Jurusan::class);
     }
 
     public function sendPasswordResetNotification($token)

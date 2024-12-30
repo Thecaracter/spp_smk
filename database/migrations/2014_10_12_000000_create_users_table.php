@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('nisn')->unique();
+            $table->string('nit')->unique();
             $table->string('alamat');
             $table->string('no_telepon');
             $table->year('tahun_masuk');

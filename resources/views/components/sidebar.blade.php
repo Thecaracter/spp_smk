@@ -35,6 +35,12 @@
                 <div x-show="sidebarOpen" class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     {{ __('Admin Menu') }}
                 </div>
+                <a href="{{ route('jurusan.index') }}"
+                    class="flex items-center space-x-2 px-4 py-2.5 rounded-lg {{ request()->routeIs('jurusan.*') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' }}"
+                    :class="{ 'justify-center': !sidebarOpen }">
+                    <span class="material-icons text-lg">school</span>
+                    <span x-show="sidebarOpen">{{ __('Jurusan') }}</span>
+                </a>
                 <a href="{{ route('users.index') }}"
                     class="flex items-center space-x-2 px-4 py-2.5 rounded-lg {{ request()->routeIs('users.*') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' }}"
                     :class="{ 'justify-center': !sidebarOpen }">

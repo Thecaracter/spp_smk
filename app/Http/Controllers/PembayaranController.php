@@ -45,7 +45,7 @@ class PembayaranController extends Controller
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'nim' => $user->nisn,
+                    'nim' => $user->nit,
                     'kelas' => $user->kelas,
                     'status' => $user->tagihan->isEmpty()
                         ? 'Tidak Ada Tagihan'
@@ -111,7 +111,7 @@ class PembayaranController extends Controller
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'nim' => $user->nisn,
+                    'nim' => $user->nit,
                     'kelas' => $user->kelas,
                     'status' => $user->tagihan->isEmpty()
                         ? 'Tidak Ada Tagihan'
